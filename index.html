@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>部門密室逃脫活動報名</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600&family=Noto+Serif+TC:wght@700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ======== Header ======== -->
+<header>
+  <div class="header-brand">
+    <span class="brand-icon">🔐</span>
+    <span class="brand-title">部門密室逃脫活動</span>
+  </div>
+  <div class="header-user">
+    <span id="user-name" class="hidden"></span>
+    <button id="btn-logout" class="btn-outline hidden">登出</button>
+  </div>
+</header>
+
+<!-- ======== Main ======== -->
+<main>
+
+  <!-- ---- 登入頁 ---- -->
+  <section id="section-login">
+    <div class="login-keyhole">🗝️</div>
+    <h1 class="login-title">2025 部門密室逃脫</h1>
+    <p class="login-sub">9 月 11 日（四）19:00 ／ 請以公司 Google 帳號登入後選擇主題</p>
+    <div class="login-notice">
+      ⚠️ 本次活動開放攜帶眷屬，眷屬費用請自行負擔，請事先確認。
+    </div>
+    <button id="btn-login" class="btn-google">
+      <span class="btn-google-icon">G</span>
+      使用 Google 帳號登入
+    </button>
+  </section>
+
+  <!-- ---- 使用者主頁 ---- -->
+  <section id="section-main" class="hidden">
+
+    <!-- 我的預約狀態 -->
+    <p class="section-title">我的預約</p>
+    <div class="panel" id="my-booking">
+      <p class="no-booking">尚未選擇主題，請從下方選一個你想玩的密室。</p>
+    </div>
+
+    <!-- 名額總覽表 -->
+    <p class="section-title">各主題名額總覽</p>
+    <div class="overview-wrap">
+      <table class="overview-table">
+        <thead>
+          <tr>
+            <th>主題</th>
+            <th>報名進度</th>
+            <th style="text-align:center">剩餘名額</th>
+          </tr>
+        </thead>
+        <tbody id="theme-overview">
+          <tr><td colspan="3" class="loading-cell">載入中…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 主題卡片 -->
+    <p class="section-title">選擇密室主題</p>
+    <p style="font-size:13px; color:#7A7870; margin-bottom:16px; margin-top:-10px;">
+      點選下方連結可查看各主題介紹，選好後按「選擇此主題」完成報名。<br>
+      ⚠️ 若攜帶眷屬，眷屬費用需自行負擔，請事先確認。
+    </p>
+    <div class="cards-grid" id="theme-cards">
+      <!-- 由 app.js 動態產生 -->
+    </div>
+
+  </section>
+
+  <!-- ---- 管理員後台 ---- -->
+  <section id="section-admin" class="hidden">
+
+    <div class="admin-header">
+      <h2 class="admin-title">管理後台</h2>
+      <p class="admin-sub">2025 部門密室逃脫活動 ／ 9 月 11 日（四）19:00</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="admin-tabs">
+      <button id="tab-overview" class="tab-btn tab-active">📊 名額總覽</button>
+      <button id="tab-list" class="tab-btn">📋 預約名單</button>
+    </div>
+
+    <!-- 名額總覽 Panel -->
+    <div id="admin-overview-panel">
+      <div class="overview-wrap">
+        <table class="overview-table">
+          <thead>
+            <tr>
+              <th>主題</th>
+              <th>報名進度</th>
+              <th style="text-align:center">剩餘名額</th>
+            </tr>
+          </thead>
+          <tbody id="admin-theme-overview">
+            <tr><td colspan="3" class="loading-cell">載入中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 預約名單 Panel -->
+    <div id="admin-list-panel" class="hidden">
+      <div class="list-toolbar">
+        <p class="list-count">共 <span id="booking-count">—</span> 筆預約</p>
+        <button id="btn-export" class="btn-primary">匯出 CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table class="booking-table">
+          <thead>
+            <tr>
+              <th>姓名</th>
+              <th>Email</th>
+              <th>選擇主題</th>
+              <th>報名時間</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="booking-list-body">
+            <tr><td colspan="5" class="loading-cell">載入中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+
+</main>
+
+<script type="module" src="app.js"></script>
+
+</body>
+</html>
