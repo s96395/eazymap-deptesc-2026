@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>管理後台｜部門密室逃脫活動</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Noto+Serif+TC:wght@700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <span class="brand-icon">🔐</span>
+    <span class="brand-title">部門密室逃脫｜管理後台</span>
+  </div>
+  <div class="header-user">
+    <span id="user-name" class="hidden"></span>
+    <a href="index.html" class="btn-outline" style="text-decoration:none; padding:7px 16px; font-size:13px;">← 前往報名頁</a>
+    <button id="btn-logout" class="btn-outline hidden">登出</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- 未登入 -->
+  <section id="section-login">
+    <div class="login-keyhole">🔒</div>
+    <h1 class="login-title">管理員登入</h1>
+    <p class="login-sub">此頁面僅限管理員帳號使用</p>
+    <button id="btn-login" class="btn-google">
+      <span class="btn-google-icon">G</span>
+      使用 Google 帳號登入
+    </button>
+  </section>
+
+  <!-- 非管理員提示 -->
+  <section id="section-denied" class="hidden">
+    <div class="login-keyhole">🚫</div>
+    <h1 class="login-title">無存取權限</h1>
+    <p class="login-sub">你的帳號不在管理員名單內。</p>
+    <a href="index.html" class="btn-primary" style="text-decoration:none; display:inline-block; margin-top:16px;">回到報名頁</a>
+  </section>
+
+  <!-- 管理員後台 -->
+  <section id="section-admin" class="hidden">
+
+    <div class="admin-header">
+      <h2 class="admin-title">管理後台</h2>
+      <p class="admin-sub">2026 部門密室逃脫活動 ／ 9 月 11 日（五）19:00</p>
+    </div>
+
+    <div class="admin-tabs">
+      <button id="tab-overview" class="tab-btn tab-active">📊 名額總覽</button>
+      <button id="tab-list" class="tab-btn">📋 預約名單</button>
+    </div>
+
+    <!-- 名額總覽 -->
+    <div id="admin-overview-panel">
+      <div class="overview-wrap">
+        <table class="overview-table">
+          <thead>
+            <tr>
+              <th>主題</th>
+              <th>報名進度</th>
+              <th style="text-align:center">剩餘名額</th>
+            </tr>
+          </thead>
+          <tbody id="admin-theme-overview">
+            <tr><td colspan="3" class="loading-cell">載入中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 預約名單 -->
+    <div id="admin-list-panel" class="hidden">
+      <div class="list-toolbar">
+        <p class="list-count">共 <span id="booking-count">—</span> 筆預約</p>
+        <button id="btn-export" class="btn-primary">匯出 CSV</button>
+      </div>
+      <div class="table-wrap">
+        <table class="booking-table">
+          <thead>
+            <tr>
+              <th>姓名</th>
+              <th>Email</th>
+              <th>選擇主題</th>
+              <th>報名時間</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="booking-list-body">
+            <tr><td colspan="5" class="loading-cell">載入中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+
+</main>
+
+<script type="module" src="admin.js"></script>
+</body>
+</html>

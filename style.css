@@ -1,47 +1,45 @@
 /* ======================================================
    style.css — 密室逃脫報名系統
-   色調：深夜黑 #0D0D0D / 霧霾白 #E8E4DC / 血橙 #E05A2B
+   色調：森林墨 #0E1A12 底 / 米白 #F0EBE0 字 / 橙黃 #E8920A accent
+   字體：Noto Serif TC（標題）+ DM Sans（內文）
    ====================================================== */
 
-/* ---- Reset & Base ---- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:         #0D0D0D;
-  --bg-card:    #161616;
-  --bg-panel:   #1A1A1A;
-  --border:     #2A2A2A;
-  --text:       #E8E4DC;
-  --text-muted: #7A7870;
-  --accent:     #E05A2B;
-  --accent-dim: rgba(224,90,43,0.15);
-  --green:      #4CAF7D;
-  --orange:     #E09A2B;
-  --red:        #E04A2B;
+  --bg:         #0E1A12;
+  --bg-card:    #131F16;
+  --bg-panel:   #172019;
+  --border:     #243328;
+  --text:       #F0EBE0;
+  --text-muted: #7A8C7D;
+  --accent:     #E8920A;
+  --accent-dim: rgba(232,146,10,0.13);
+  --green:      #5BBF7A;
+  --orange:     #E8920A;
+  --red:        #D94F3A;
   --radius:     10px;
-  --shadow:     0 4px 24px rgba(0,0,0,0.5);
 }
 
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: "Noto Sans TC", "Helvetica Neue", sans-serif;
-  font-size: 15px;
-  line-height: 1.6;
+  font-family: "DM Sans", "Noto Sans TC", sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
   min-height: 100vh;
 }
 
 a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
-
 .hidden { display: none !important; }
 
 /* ---- Header ---- */
 header {
-  background: #080808;
+  background: #0A1410;
   border-bottom: 1px solid var(--border);
   padding: 0 32px;
-  height: 60px;
+  height: 62px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -50,19 +48,11 @@ header {
   z-index: 100;
 }
 
-.header-brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.brand-icon {
-  font-size: 22px;
-}
-
+.header-brand { display: flex; align-items: center; gap: 10px; }
+.brand-icon { font-size: 22px; }
 .brand-title {
   font-family: "Noto Serif TC", serif;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--text);
@@ -72,7 +62,7 @@ header {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-muted);
 }
 
@@ -83,12 +73,12 @@ header {
   border: none;
   padding: 10px 22px;
   border-radius: var(--radius);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s, transform 0.1s;
 }
-.btn-primary:hover { background: #c94e24; transform: translateY(-1px); }
+.btn-primary:hover { background: #c97a08; transform: translateY(-1px); }
 
 .btn-outline {
   background: transparent;
@@ -96,56 +86,49 @@ header {
   border: 1px solid var(--border);
   padding: 7px 16px;
   border-radius: var(--radius);
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
   transition: border-color 0.2s, color 0.2s;
 }
 .btn-outline:hover { border-color: var(--text-muted); color: var(--text); }
 
-/* ---- Main Layout ---- */
+/* ---- Layout ---- */
 main {
-  max-width: 960px;
+  max-width: 980px;
   margin: 0 auto;
-  padding: 40px 20px 80px;
+  padding: 44px 24px 88px;
 }
 
-/* ---- Section: 登入 ---- */
-#section-login {
+/* ---- 登入頁 ---- */
+#section-login, #section-denied {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 60vh;
+  min-height: 62vh;
   text-align: center;
   gap: 20px;
 }
 
-.login-keyhole {
-  font-size: 64px;
-  opacity: 0.8;
-}
+.login-keyhole { font-size: 68px; opacity: 0.85; }
 
 .login-title {
   font-family: "Noto Serif TC", serif;
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
 
-.login-sub {
-  color: var(--text-muted);
-  font-size: 14px;
-  max-width: 360px;
-}
+.login-sub { color: var(--text-muted); font-size: 15px; max-width: 380px; }
 
 .login-notice {
   background: var(--accent-dim);
-  border: 1px solid rgba(224,90,43,0.3);
+  border: 1px solid rgba(232,146,10,0.28);
   border-radius: var(--radius);
-  padding: 12px 18px;
-  font-size: 13px;
-  color: #E8A07A;
-  max-width: 380px;
+  padding: 13px 20px;
+  font-size: 14px;
+  color: #F0B860;
+  max-width: 400px;
 }
 
 .btn-google {
@@ -155,40 +138,37 @@ main {
   background: var(--bg-card);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 12px 28px;
+  padding: 13px 30px;
   border-radius: var(--radius);
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
 }
-.btn-google:hover { border-color: var(--accent); background: #1E1E1E; }
-.btn-google-icon { font-size: 20px; }
+.btn-google:hover { border-color: var(--accent); background: #1C2A1F; }
+.btn-google-icon { font-size: 20px; font-weight: 700; color: var(--accent); }
 
-/* ---- Section: 使用者主頁 ---- */
+/* ---- Section title ---- */
 .section-title {
   font-family: "Noto Serif TC", serif;
   font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-muted);
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
-/* ---- 我的預約 ---- */
+/* ---- 我的預約 Panel ---- */
 .panel {
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 20px 24px;
-  margin-bottom: 32px;
+  margin-bottom: 36px;
 }
 
-.no-booking {
-  color: var(--text-muted);
-  font-size: 14px;
-}
+.no-booking { color: var(--text-muted); font-size: 15px; }
 
 .booking-status {
   display: flex;
@@ -198,28 +178,28 @@ main {
   flex-wrap: wrap;
 }
 
-.booking-label { color: var(--text-muted); font-size: 13px; }
-.booking-theme { font-size: 16px; margin-left: 8px; }
+.booking-label { color: var(--text-muted); font-size: 14px; }
+.booking-theme { font-size: 17px; margin-left: 8px; }
 
 .btn-cancel {
   background: transparent;
-  border: 1px solid #5A2020;
-  color: #E07070;
-  padding: 6px 14px;
+  border: 1px solid #5A2A1A;
+  color: #E09070;
+  padding: 7px 16px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
   transition: background 0.2s;
 }
-.btn-cancel:hover { background: rgba(224,70,70,0.12); }
+.btn-cancel:hover { background: rgba(217,79,58,0.12); }
 
 .family-notice {
-  margin-top: 12px;
-  font-size: 13px;
-  color: #E09A2B;
-  background: rgba(224,154,43,0.1);
+  margin-top: 13px;
+  font-size: 14px;
+  color: #E0B060;
+  background: rgba(232,146,10,0.09);
   border-radius: 6px;
-  padding: 8px 12px;
+  padding: 9px 14px;
 }
 
 /* ---- 名額總覽表 ---- */
@@ -228,18 +208,15 @@ main {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  margin-bottom: 32px;
+  margin-bottom: 36px;
 }
 
-.overview-table {
-  width: 100%;
-  border-collapse: collapse;
-}
+.overview-table { width: 100%; border-collapse: collapse; }
 
 .overview-table th {
-  background: #111;
-  padding: 10px 16px;
-  font-size: 12px;
+  background: #0E1810;
+  padding: 11px 18px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-muted);
   text-align: left;
@@ -248,64 +225,52 @@ main {
 }
 
 .overview-table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid #1E1E1E;
+  padding: 15px 18px;
+  border-bottom: 1px solid #1C2A1F;
   vertical-align: middle;
 }
 
 .overview-table tr:last-child td { border-bottom: none; }
-
-.overview-table tr.row-full td { opacity: 0.45; }
+.overview-table tr.row-full td { opacity: 0.42; }
 
 .theme-name-cell { min-width: 200px; }
-.theme-name-cell a { color: var(--text); font-weight: 600; font-size: 14px; }
+.theme-name-cell a { color: var(--text); font-weight: 600; font-size: 15px; }
 .theme-name-cell a:hover { color: var(--accent); }
-.theme-range {
-  display: block;
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 2px;
-}
+.theme-range { display: block; font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 
-.keyhole-icon { margin-right: 6px; font-size: 12px; }
-
-.count-cell { min-width: 180px; }
+.count-cell { min-width: 190px; }
 .progress-wrap {
-  background: #232323;
+  background: #1E2E20;
   border-radius: 4px;
   height: 6px;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
   overflow: hidden;
 }
-.progress-bar {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.4s ease;
-}
+.progress-bar { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
 .bar-ok   { background: var(--green); }
 .bar-low  { background: var(--orange); }
 .bar-full { background: var(--red); }
 
-.count-label { font-size: 12px; color: var(--text-muted); }
+.count-label { font-size: 13px; color: var(--text-muted); }
 
 .remaining-cell { text-align: center; min-width: 80px; }
-.remaining-ok   { font-size: 20px; font-weight: 700; color: var(--green); }
-.remaining-low  { font-size: 20px; font-weight: 700; color: var(--orange); }
-.remaining-full { font-size: 20px; font-weight: 700; color: var(--red); }
+.remaining-ok   { font-size: 22px; font-weight: 700; color: var(--green); }
+.remaining-low  { font-size: 22px; font-weight: 700; color: var(--orange); }
+.remaining-full { font-size: 22px; font-weight: 700; color: var(--red); }
 
 .badge-full {
-  background: #2A1A1A;
+  background: #2A1A14;
   color: var(--text-muted);
-  font-size: 12px;
-  padding: 3px 10px;
+  font-size: 13px;
+  padding: 3px 12px;
   border-radius: 20px;
-  border: 1px solid #3A2A2A;
+  border: 1px solid #3A2A20;
 }
 
 /* ---- 主題卡片 ---- */
 .cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
   gap: 16px;
   margin-bottom: 40px;
 }
@@ -319,107 +284,94 @@ main {
   flex-direction: column;
   transition: border-color 0.2s, transform 0.15s;
 }
-.theme-card:hover { border-color: #3A3A3A; transform: translateY(-2px); }
-.theme-card.card-selected { border-color: var(--accent); background: #1A1008; }
-.theme-card.card-full { opacity: 0.45; pointer-events: none; }
+.theme-card:hover { border-color: #3A5040; transform: translateY(-2px); }
+.theme-card.card-selected { border-color: var(--accent); background: #1C1E0E; }
+.theme-card.card-full { opacity: 0.42; pointer-events: none; }
 
 .card-header {
-  padding: 16px 18px 10px;
+  padding: 18px 20px 11px;
   border-bottom: 1px solid var(--border);
 }
-.card-title { font-family: "Noto Serif TC", serif; font-size: 16px; font-weight: 700; }
-.card-range { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.card-title { font-family: "Noto Serif TC", serif; font-size: 17px; font-weight: 700; }
+.card-range { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
 
-.card-body { padding: 14px 18px; flex: 1; }
-.card-link { font-size: 13px; display: inline-block; margin-bottom: 12px; }
+.card-body { padding: 15px 20px; flex: 1; }
+.card-link { font-size: 14px; display: inline-block; margin-bottom: 13px; }
 
 .cap-bar-wrap {
-  background: #232323;
+  background: #1E2E20;
   border-radius: 4px;
   height: 5px;
-  margin-bottom: 6px;
+  margin-bottom: 7px;
   overflow: hidden;
 }
-.cap-bar {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.4s ease;
-}
-.cap-text { font-size: 12px; color: var(--text-muted); }
+.cap-bar { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+.cap-text { font-size: 13px; color: var(--text-muted); }
 
-.card-footer {
-  padding: 12px 18px 16px;
-}
+.card-footer { padding: 13px 20px 18px; }
 
 .btn-select {
   width: 100%;
   background: var(--accent);
   color: #fff;
   border: none;
-  padding: 10px;
+  padding: 11px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
 }
-.btn-select:hover { background: #c94e24; }
-.btn-select:disabled { background: #444; cursor: not-allowed; }
+.btn-select:hover { background: #c97a08; }
+.btn-select:disabled { background: #3A4A3C; cursor: not-allowed; }
 
 .badge-booked {
   display: block;
   text-align: center;
   color: var(--accent);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  padding: 8px 0;
+  padding: 9px 0;
 }
-
 .badge-full-sm {
   display: block;
   text-align: center;
   color: var(--text-muted);
-  font-size: 13px;
-  padding: 8px 0;
+  font-size: 14px;
+  padding: 9px 0;
 }
 
 /* ---- 管理員後台 ---- */
-.admin-header {
-  margin-bottom: 24px;
-}
+.admin-header { margin-bottom: 26px; }
 .admin-title {
   font-family: "Noto Serif TC", serif;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
   margin-bottom: 4px;
 }
-.admin-sub { color: var(--text-muted); font-size: 13px; }
+.admin-sub { color: var(--text-muted); font-size: 14px; }
 
 .admin-tabs {
   display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
+  gap: 4px;
+  margin-bottom: 26px;
   border-bottom: 1px solid var(--border);
-  padding-bottom: 0;
 }
 
 .tab-btn {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  padding: 10px 18px;
+  padding: 10px 20px;
   cursor: pointer;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   transition: color 0.2s, border-color 0.2s;
 }
 .tab-btn:hover { color: var(--text); }
-.tab-btn.tab-active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
+.tab-btn.tab-active { color: var(--accent); border-bottom-color: var(--accent); }
 
 .list-toolbar {
   display: flex;
@@ -427,7 +379,7 @@ main {
   justify-content: space-between;
   margin-bottom: 16px;
 }
-.list-count { font-size: 13px; color: var(--text-muted); }
+.list-count { font-size: 14px; color: var(--text-muted); }
 .list-count span { color: var(--text); font-weight: 600; }
 
 .table-wrap {
@@ -437,44 +389,41 @@ main {
   overflow: hidden;
 }
 
-.booking-table {
-  width: 100%;
-  border-collapse: collapse;
-}
+.booking-table { width: 100%; border-collapse: collapse; }
 .booking-table th {
-  background: #111;
-  padding: 10px 16px;
-  font-size: 12px;
+  background: #0E1810;
+  padding: 11px 18px;
+  font-size: 13px;
   color: var(--text-muted);
   text-align: left;
   letter-spacing: 0.06em;
   border-bottom: 1px solid var(--border);
 }
 .booking-table td {
-  padding: 13px 16px;
-  font-size: 13px;
-  border-bottom: 1px solid #1E1E1E;
+  padding: 14px 18px;
+  font-size: 14px;
+  border-bottom: 1px solid #1C2A1F;
 }
 .booking-table tr:last-child td { border-bottom: none; }
-.booking-table tr:hover td { background: #1C1C1C; }
+.booking-table tr:hover td { background: #1A2A1C; }
 
 .btn-admin-del {
   background: transparent;
-  border: 1px solid #5A2020;
-  color: #E07070;
-  padding: 4px 12px;
+  border: 1px solid #5A2A1A;
+  color: #E09070;
+  padding: 5px 13px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   transition: background 0.2s;
 }
-.btn-admin-del:hover { background: rgba(224,70,70,0.15); }
+.btn-admin-del:hover { background: rgba(217,79,58,0.14); }
 
 .loading-cell, .empty-cell, .error-cell {
   text-align: center;
-  padding: 32px;
+  padding: 36px;
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 15px;
 }
 
 /* ---- Toast ---- */
@@ -483,9 +432,9 @@ main {
   bottom: 32px;
   left: 50%;
   transform: translateX(-50%) translateY(16px);
-  padding: 12px 24px;
+  padding: 13px 26px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   opacity: 0;
   transition: opacity 0.25s, transform 0.25s;
@@ -493,13 +442,13 @@ main {
   pointer-events: none;
 }
 .toast-show { opacity: 1; transform: translateX(-50%) translateY(0); }
-.toast-success { background: #1A3A2A; color: #6EE0A0; border: 1px solid #2A5A3A; }
-.toast-error   { background: #3A1A1A; color: #E08080; border: 1px solid #5A2A2A; }
+.toast-success { background: #142A1C; color: #70E0A0; border: 1px solid #2A5A3A; }
+.toast-error   { background: #2A1414; color: #E09080; border: 1px solid #5A2A2A; }
 
 /* ---- Responsive ---- */
 @media (max-width: 640px) {
   header { padding: 0 16px; }
-  main { padding: 24px 16px 60px; }
+  main { padding: 28px 16px 64px; }
   .cards-grid { grid-template-columns: 1fr; }
   .booking-status { flex-direction: column; align-items: flex-start; }
   .overview-table th:nth-child(2),
