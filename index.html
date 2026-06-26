@@ -67,24 +67,25 @@
       </div>
     </section>
 
-    <section class="panel-block">
+
+    <section class="panel-block" id="party-panel">
       <div class="section-heading">
-        <p class="section-title">各主題名額總覽</p>
-        <span class="section-tag">Real-time Capacity</span>
+        <div>
+          <p class="section-title">報名人數設定</p>
+          <p class="section-note">本人會自動計入 1 位；如果要幫眷屬一起報名，請在這裡新增。名額會依總人數扣除。</p>
+        </div>
+        <span class="section-tag">Party Size</span>
       </div>
-      <div class="overview-wrap">
-        <table class="overview-table">
-          <thead>
-            <tr>
-              <th>主題</th>
-              <th>報名進度</th>
-              <th style="text-align:center">剩餘名額</th>
-            </tr>
-          </thead>
-          <tbody id="theme-overview">
-            <tr><td colspan="3" class="loading-cell">載入中…</td></tr>
-          </tbody>
-        </table>
+      <div class="panel party-panel-inner">
+        <div class="party-main-row">
+          <div>
+            <span class="party-label">本次預約總人數</span>
+            <strong><span id="party-size">1</span> 人</strong>
+          </div>
+          <button id="btn-add-dependent" type="button" class="btn-outline">＋ 新增眷屬</button>
+        </div>
+        <div id="dependents-list" class="dependents-list"></div>
+        <p class="family-notice">提醒：眷屬會一起佔用該主題名額，請確認人數後再選擇主題。</p>
       </div>
     </section>
 

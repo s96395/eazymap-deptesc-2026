@@ -59,7 +59,7 @@ function onBookingCountsChange(callback) {
     const counts = {};
     snapshot.forEach((d) => {
       const data = d.data();
-      counts[data.themeId] = (counts[data.themeId] || 0) + 1;
+      counts[data.themeId] = (counts[data.themeId] || 0) + (data.totalPeople || 1);
     });
     callback(counts);
   });
@@ -83,43 +83,48 @@ async function getMyBooking(uid) {
  * @param {object} user - { uid, email, displayName }
  * @param {string} themeId
  * @param {number} maxCapacity - 該主題人數上限
+ * @param {object} options - { dependents, totalPeople }
  */
-async function upsertBooking(user, themeId, maxCapacity) {
+async function upsertBooking(user, themeId, maxCapacity, options = {}) {
   const bookingRef = doc(db, "bookings", user.uid);
   const counterRef = doc(db, "counters", themeId);
+  const dependents = Array.isArray(options.dependents) ? options.dependents : [];
+  const totalPeople = Number(options.totalPeople) || (1 + dependents.length);
 
   await runTransaction(db, async (tx) => {
-    // 先讀取目前預約（看是否要退舊的）
     const existingSnap = await tx.get(bookingRef);
-    const oldThemeId = existingSnap.exists() ? existingSnap.data().themeId : null;
+    const existing = existingSnap.exists() ? existingSnap.data() : null;
+    const oldThemeId = existing?.themeId || null;
+    const oldTotalPeople = existing?.totalPeople || 1;
 
-    // 讀取新主題計數
     const counterSnap = await tx.get(counterRef);
     const currentCount = counterSnap.exists() ? counterSnap.data().count : 0;
 
-    // 若換的是不同主題，才需要檢查名額
-    if (oldThemeId !== themeId) {
-      if (currentCount >= maxCapacity) {
-        throw new Error("FULL");
-      }
-      // 舊主題計數 -1
+    if (oldThemeId === themeId) {
+      const seatChange = totalPeople - oldTotalPeople;
+      if (currentCount + seatChange > maxCapacity) throw new Error("FULL");
+      tx.set(counterRef, { count: Math.max(0, currentCount + seatChange) });
+    } else {
+      if (currentCount + totalPeople > maxCapacity) throw new Error("FULL");
+
       if (oldThemeId) {
         const oldCounterRef = doc(db, "counters", oldThemeId);
         const oldSnap = await tx.get(oldCounterRef);
-        const oldCount = oldSnap.exists() ? oldSnap.data().count : 1;
-        tx.set(oldCounterRef, { count: Math.max(0, oldCount - 1) });
+        const oldCount = oldSnap.exists() ? oldSnap.data().count : oldTotalPeople;
+        tx.set(oldCounterRef, { count: Math.max(0, oldCount - oldTotalPeople) });
       }
-      // 新主題計數 +1
-      tx.set(counterRef, { count: currentCount + 1 });
+
+      tx.set(counterRef, { count: currentCount + totalPeople });
     }
 
-    // 寫入預約
     tx.set(bookingRef, {
       uid: user.uid,
       email: user.email,
       displayName: user.displayName || "",
       themeId,
-      createdAt: existingSnap.exists() ? existingSnap.data().createdAt : serverTimestamp(),
+      dependents,
+      totalPeople,
+      createdAt: existingSnap.exists() ? existing.createdAt : serverTimestamp(),
       updatedAt: serverTimestamp()
     });
   });
@@ -137,9 +142,11 @@ async function cancelBooking(uid, themeId) {
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(bookingRef);
     if (!snap.exists()) return;
+    const booking = snap.data();
+    const totalPeople = booking.totalPeople || 1;
     const counterSnap = await tx.get(counterRef);
-    const count = counterSnap.exists() ? counterSnap.data().count : 1;
-    tx.set(counterRef, { count: Math.max(0, count - 1) });
+    const count = counterSnap.exists() ? counterSnap.data().count : totalPeople;
+    tx.set(counterRef, { count: Math.max(0, count - totalPeople) });
     tx.delete(bookingRef);
   });
 }

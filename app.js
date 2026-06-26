@@ -50,13 +50,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (unsubscribeCounts) unsubscribeCounts();
     unsubscribeCounts = onBookingCountsChange((counts) => {
       bookingCounts = counts;
-      renderThemeOverview();
       if (currentUser) renderThemeCards();
     });
   });
 
   $("#btn-login")?.addEventListener("click", loginWithGoogle);
   $("#btn-logout")?.addEventListener("click", logout);
+  $("#btn-add-dependent")?.addEventListener("click", addDependentRow);
 });
 
 function showLogin() {
@@ -67,52 +67,75 @@ function showLogin() {
 function showMain() {
   $("#section-login")?.classList.add("hidden");
   $("#section-main")?.classList.remove("hidden");
-  renderThemeOverview();
   renderThemeCards();
   renderMyBooking();
+  updatePartySize();
 }
 
 function getCount(id) { return bookingCounts[id] || 0; }
 function getRemaining(t) { return t.capacity - getCount(t.id); }
-function isFull(t) { return getRemaining(t) <= 0; }
+function getPartySize() { return 1 + $$(".dependent-row").length; }
 
-function renderThemeOverview() {
-  const tbody = $("#theme-overview");
-  if (!tbody) return;
-  tbody.innerHTML = THEMES.map((t) => {
-    const count = getCount(t.id);
-    const remaining = t.capacity - count;
-    const full = remaining <= 0;
-    const pct = Math.min((count / t.capacity) * 100, 100);
-    const cls = full ? "remaining-full" : remaining <= 2 ? "remaining-low" : "remaining-ok";
-    return `
-      <tr class="${full ? "row-full" : ""}">
-        <td class="theme-name-cell">
-          <a href="${t.url}" target="_blank" rel="noopener">${t.name}</a>
-          <span class="theme-range">${t.desc}</span>
-        </td>
-        <td class="count-cell">
-          <div class="progress-wrap">
-            <div class="progress-bar ${full ? "bar-full" : remaining <= 2 ? "bar-low" : "bar-ok"}" style="width:${pct}%"></div>
-          </div>
-          <span class="count-label">${count}/${t.capacity}</span>
-        </td>
-        <td class="remaining-cell">
-          ${full ? `<span class="badge-full">額滿</span>` : `<span class="${cls}">${remaining}</span>`}
-        </td>
-      </tr>`;
-  }).join("");
+function addDependentRow() {
+  if (myBooking) {
+    showToast("你已經完成預約，如需調整眷屬請先取消預約再重新報名。", true);
+    return;
+  }
+  const list = $("#dependents-list");
+  if (!list) return;
+
+  const row = document.createElement("div");
+  row.className = "dependent-row";
+  row.innerHTML = `
+    <div class="dependent-info">
+      <label>眷屬姓名</label>
+      <input class="dependent-name" type="text" placeholder="請輸入眷屬姓名" autocomplete="off" />
+    </div>
+    <button type="button" class="btn-remove-dependent">移除</button>
+  `;
+  row.querySelector(".btn-remove-dependent").addEventListener("click", () => {
+    row.remove();
+    updatePartySize();
+    renderThemeCards();
+  });
+  row.querySelector(".dependent-name").addEventListener("input", () => renderThemeCards());
+  list.appendChild(row);
+  updatePartySize();
+  renderThemeCards();
+}
+
+function getDependents() {
+  return Array.from($$(".dependent-name"))
+    .map((input) => input.value.trim())
+    .filter(Boolean)
+    .map((name) => ({ name }));
+}
+
+function updatePartySize() {
+  const el = $("#party-size");
+  if (el) el.textContent = getPartySize();
+}
+
+function setPartyPanelDisabled(disabled) {
+  const panel = $("#party-panel");
+  panel?.classList.toggle("is-disabled", disabled);
+  $("#btn-add-dependent")?.toggleAttribute("disabled", disabled);
+  $$(".dependent-name, .btn-remove-dependent").forEach((el) => el.toggleAttribute("disabled", disabled));
 }
 
 function renderThemeCards() {
   const container = $("#theme-cards");
   if (!container) return;
+  const partySize = getPartySize();
   container.innerHTML = THEMES.map((t) => {
-    const full = isFull(t);
     const remaining = getRemaining(t);
+    const full = remaining <= 0;
     const isBooked = myBooking?.themeId === t.id;
+    const notEnough = !isBooked && remaining < partySize;
+    const pct = Math.min((getCount(t.id) / t.capacity) * 100, 100);
+
     return `
-      <div class="theme-card ${full && !isBooked ? "card-full" : ""} ${isBooked ? "card-selected" : ""}">
+      <div class="theme-card ${full && !isBooked ? "card-full" : ""} ${isBooked ? "card-selected" : ""} ${notEnough ? "card-limited" : ""}">
         <div class="card-header">
           <h3 class="card-title">${t.name}</h3>
           <span class="card-range">${t.desc}</span>
@@ -121,59 +144,87 @@ function renderThemeCards() {
           <a href="${t.url}" target="_blank" rel="noopener" class="card-link">查看主題介紹 →</a>
           <div class="card-capacity">
             <div class="cap-bar-wrap">
-              <div class="cap-bar ${full ? "bar-full" : remaining <= 2 ? "bar-low" : "bar-ok"}"
-                   style="width:${Math.min((getCount(t.id)/t.capacity)*100,100)}%"></div>
+              <div class="cap-bar ${full ? "bar-full" : remaining <= 2 ? "bar-low" : "bar-ok"}" style="width:${pct}%"></div>
             </div>
             <span class="cap-text">${full ? "額滿" : `剩餘 ${remaining} 位`}</span>
           </div>
+          ${notEnough ? `<p class="capacity-warning">目前選擇 ${partySize} 人，剩餘名額不足。</p>` : ""}
         </div>
         <div class="card-footer">
           ${isBooked
             ? `<span class="badge-booked">✓ 已選此主題</span>`
             : full
             ? `<span class="badge-full-sm">額滿</span>`
+            : notEnough
+            ? `<span class="badge-full-sm">名額不足</span>`
             : `<button class="btn-select" data-theme="${t.id}" data-cap="${t.capacity}">選擇此主題</button>`}
         </div>
       </div>`;
   }).join("");
 
   $$(".btn-select").forEach((btn) => {
-    btn.addEventListener("click", () => handleBook(btn.dataset.theme, parseInt(btn.dataset.cap)));
+    btn.addEventListener("click", () => handleBook(btn.dataset.theme, parseInt(btn.dataset.cap, 10)));
   });
 }
 
 function renderMyBooking() {
   const el = $("#my-booking");
   if (!el) return;
+  setPartyPanelDisabled(!!myBooking);
+
   if (!myBooking) {
-    el.innerHTML = `<p class="no-booking">尚未選擇主題，請從下方選一個你想玩的密室。</p>`;
+    el.innerHTML = `<p class="no-booking">尚未選擇主題，請先設定報名人數，再從下方選一個你想玩的密室。</p>`;
     return;
   }
+
   const theme = THEMES.find((t) => t.id === myBooking.themeId);
+  const dependents = Array.isArray(myBooking.dependents) ? myBooking.dependents : [];
+  const totalPeople = myBooking.totalPeople || (1 + dependents.length);
+  const dependentText = dependents.length
+    ? `<p class="family-notice">同行眷屬：${dependents.map((d) => d.name).join("、")}</p>`
+    : `<p class="family-notice">本次未登記同行眷屬。</p>`;
+
   el.innerHTML = `
     <div class="booking-status">
       <div class="booking-info">
         <span class="booking-label">你目前選擇的主題：</span>
         <strong class="booking-theme">${theme?.name || myBooking.themeId}</strong>
+        <span class="booking-people">共 ${totalPeople} 人</span>
       </div>
       <button id="btn-cancel" class="btn-cancel">取消預約</button>
     </div>
-    <p class="family-notice">⚠️ 若攜帶眷屬，眷屬費用需自行負擔，請事先確認。</p>`;
+    ${dependentText}
+    <p class="family-notice">⚠️ 若要調整眷屬或人數，請先取消預約後重新報名。</p>`;
   $("#btn-cancel")?.addEventListener("click", handleCancel);
 }
 
 async function handleBook(themeId, capacity) {
   if (!currentUser) return;
+
+  const rows = $$(".dependent-row");
+  const dependents = getDependents();
+  if (dependents.length !== rows.length) {
+    showToast("請填寫每一位眷屬姓名，或先移除空白欄位。", true);
+    return;
+  }
+
+  const totalPeople = 1 + dependents.length;
   const btn = $(`.btn-select[data-theme="${themeId}"]`);
   if (btn) { btn.disabled = true; btn.textContent = "處理中…"; }
+
   try {
-    await upsertBooking({ uid: currentUser.uid, email: currentUser.email, displayName: currentUser.displayName }, themeId, capacity);
+    await upsertBooking(
+      { uid: currentUser.uid, email: currentUser.email, displayName: currentUser.displayName },
+      themeId,
+      capacity,
+      { dependents, totalPeople }
+    );
     myBooking = await getMyBooking(currentUser.uid);
     renderMyBooking();
     renderThemeCards();
     showToast("預約成功！");
   } catch (err) {
-    showToast(err.message === "FULL" ? "此主題已額滿，請選擇其他主題。" : "預約失敗，請稍後再試。", true);
+    showToast(err.message === "FULL" ? "此主題名額不足，請調整人數或選擇其他主題。" : "預約失敗，請稍後再試。", true);
     if (btn) { btn.disabled = false; btn.textContent = "選擇此主題"; }
   }
 }

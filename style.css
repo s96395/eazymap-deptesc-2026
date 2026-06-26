@@ -547,3 +547,130 @@ tr:hover td { background: rgba(16, 31, 66, 0.24); }
   .hero-section { padding-top: 36px; justify-content: flex-start; }
   .theme-range { display: block; margin-left: 0; margin-top: 4px; }
 }
+
+/* 報名人數／眷屬設定 */
+.party-panel-inner {
+  display: grid;
+  gap: 18px;
+}
+
+.party-main-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 255, 204, 0.14);
+}
+
+.party-main-row strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.5rem;
+  color: var(--neon);
+  font-family: "Share Tech Mono", monospace;
+}
+
+.party-label {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.dependents-list {
+  display: grid;
+  gap: 12px;
+}
+
+.dependent-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid rgba(56, 189, 248, 0.24);
+  border-radius: 16px;
+  background: rgba(4, 8, 15, 0.62);
+}
+
+.dependent-info label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.dependent-name {
+  width: 100%;
+  border: 1px solid rgba(56, 189, 248, 0.32);
+  border-radius: 12px;
+  background: rgba(1, 7, 18, 0.86);
+  color: var(--text);
+  padding: 10px 12px;
+  outline: none;
+}
+
+.dependent-name:focus {
+  border-color: var(--neon);
+  box-shadow: 0 0 0 3px rgba(0, 255, 204, 0.12);
+}
+
+.btn-remove-dependent {
+  border: 1px solid rgba(255, 74, 74, 0.4);
+  background: rgba(255, 74, 74, 0.08);
+  color: #ffb4b4;
+  border-radius: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.btn-remove-dependent:hover {
+  background: rgba(255, 74, 74, 0.16);
+}
+
+#party-panel.is-disabled {
+  opacity: 0.78;
+}
+
+#party-panel.is-disabled .party-panel-inner {
+  filter: grayscale(0.18);
+}
+
+.booking-people {
+  display: inline-flex;
+  margin-left: 10px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 255, 204, 0.26);
+  color: var(--neon);
+  background: rgba(0, 255, 204, 0.08);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.capacity-warning {
+  margin: 10px 0 0;
+  color: var(--gold);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.card-limited {
+  opacity: 0.74;
+}
+
+.table-subtext {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 640px) {
+  .party-main-row,
+  .dependent-row {
+    grid-template-columns: 1fr;
+  }
+
+  .party-main-row {
+    display: grid;
+  }
+}

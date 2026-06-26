@@ -113,14 +113,14 @@ function renderAdminOverview() {
 async function loadAdminList() {
   const tbody = $("#booking-list-body");
   if (!tbody) return;
-  tbody.innerHTML = `<tr><td colspan="5" class="loading-cell">載入中…</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="6" class="loading-cell">載入中…</td></tr>`;
   try {
     const bookings = await getAllBookings();
     const countEl = $("#booking-count");
     if (countEl) countEl.textContent = bookings.length;
 
     if (bookings.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="empty-cell">目前尚無預約資料。</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="empty-cell">目前尚無預約資料。</td></tr>`;
       return;
     }
 
@@ -128,11 +128,15 @@ async function loadAdminList() {
     tbody.innerHTML = bookings.map((b) => {
       const theme = THEMES.find((t) => t.id === b.themeId);
       const createdAt = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleString("zh-TW") : "—";
+      const dependents = Array.isArray(b.dependents) ? b.dependents : [];
+      const totalPeople = b.totalPeople || (1 + dependents.length);
+      const dependentNames = dependents.length ? dependents.map((d) => d.name).join("、") : "無";
       return `
         <tr>
           <td>${b.displayName || "—"}</td>
           <td>${b.email}</td>
           <td>${theme?.name || b.themeId}</td>
+          <td><strong>${totalPeople} 人</strong><br><span class="table-subtext">眷屬：${dependentNames}</span></td>
           <td>${createdAt}</td>
           <td><button class="btn-admin-del" data-uid="${b.uid}" data-theme="${b.themeId}">刪除</button></td>
         </tr>`;
@@ -151,18 +155,22 @@ async function loadAdminList() {
       });
     });
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="5" class="error-cell">載入失敗，請重新整理。</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="error-cell">載入失敗，請重新整理。</td></tr>`;
     console.error(err);
   }
 }
 
 async function exportCSV() {
   const bookings = await getAllBookings();
-  const header = ["姓名", "Email", "主題", "報名時間"];
+  const header = ["姓名", "Email", "主題", "總人數", "眷屬", "報名時間"];
   const rows = bookings.map((b) => {
     const theme = THEMES.find((t) => t.id === b.themeId);
     const createdAt = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleString("zh-TW") : "";
-    return [b.displayName || "", b.email, theme?.name || b.themeId, createdAt].map((v) => `"${v}"`).join(",");
+    const dependents = Array.isArray(b.dependents) ? b.dependents : [];
+    const totalPeople = b.totalPeople || (1 + dependents.length);
+    const dependentNames = dependents.map((d) => d.name).join("、");
+    return [b.displayName || "", b.email, theme?.name || b.themeId, totalPeople, dependentNames, createdAt]
+      .map((v) => `"${String(v).replaceAll('"', '""')}"`).join(",");
   });
   const csv = "\uFEFF" + [header.join(","), ...rows].join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
