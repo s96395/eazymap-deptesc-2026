@@ -674,3 +674,294 @@ tr:hover td { background: rgba(16, 31, 66, 0.24); }
     display: grid;
   }
 }
+
+/* ======================================================
+   v3 readability + mobile polish
+   ====================================================== */
+body {
+  font-size: 16px;
+}
+
+.brand-title {
+  font-size: clamp(18px, 2.2vw, 23px);
+}
+
+.user-chip, #user-name,
+.btn-outline, .header-link,
+.section-note,
+.login-notice,
+.card-link,
+.family-notice {
+  font-size: 14px;
+}
+
+.login-title,
+.page-heading h2,
+.admin-title {
+  font-family: "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.page-heading h2,
+.admin-title {
+  font-size: clamp(30px, 4vw, 44px);
+}
+
+.section-title {
+  font-size: clamp(22px, 2.8vw, 26px);
+  line-height: 1.35;
+}
+
+.card-title {
+  font-size: clamp(22px, 2.6vw, 26px);
+}
+
+th {
+  font-size: 14px;
+}
+
+td {
+  font-size: 16px;
+}
+
+.btn-primary,
+.btn-google,
+.btn-select,
+.btn-outline,
+.header-link,
+.btn-cancel,
+.btn-admin-del,
+.tab-btn {
+  font-size: 15px;
+}
+
+.btn-primary,
+.btn-google,
+.btn-select {
+  min-height: 48px;
+}
+
+.dependent-name {
+  font-size: 16px;
+  min-height: 46px;
+}
+
+@media (max-width: 680px) {
+  body {
+    font-size: 16px;
+  }
+
+  main {
+    width: min(100% - 20px, 1120px);
+    padding-top: 22px;
+    padding-bottom: 48px;
+  }
+
+  .site-header,
+  header {
+    position: static;
+    gap: 14px;
+    padding: 14px 14px 16px;
+  }
+
+  .header-brand {
+    width: 100%;
+  }
+
+  .brand-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 15px;
+  }
+
+  .brand-title {
+    font-size: 22px;
+  }
+
+  .brand-subtitle {
+    font-size: 11px;
+  }
+
+  .header-user {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .user-chip,
+  #user-name {
+    grid-column: 1 / -1;
+    max-width: none;
+    text-align: center;
+  }
+
+  .header-user .btn-outline,
+  .header-user .header-link {
+    width: 100%;
+    min-height: 42px;
+    padding: 9px 10px;
+  }
+
+  .hero-section {
+    min-height: auto;
+    padding: 32px 0 42px;
+  }
+
+  .hero-orb {
+    width: 88px;
+    height: 88px;
+    font-size: 48px;
+    border-radius: 26px;
+  }
+
+  .login-title {
+    font-size: 38px;
+    line-height: 1.18;
+  }
+
+  .login-sub {
+    font-size: 16px;
+  }
+
+  .page-heading,
+  .panel-block {
+    border-radius: 20px;
+    padding: 20px;
+  }
+
+  .page-heading h2,
+  .admin-title {
+    font-size: 34px;
+  }
+
+  .admin-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .tab-btn {
+    width: 100%;
+  }
+
+  .party-main-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .party-main-row .btn-outline {
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .dependent-row {
+    grid-template-columns: 1fr;
+  }
+
+  .btn-remove-dependent {
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .cards-grid {
+    gap: 14px;
+  }
+
+  .theme-card {
+    min-height: auto;
+    padding: 18px;
+  }
+
+  .card-footer .btn-select,
+  .card-footer .btn-cancel {
+    width: 100%;
+  }
+
+  .overview-wrap,
+  .list-wrap {
+    overflow-x: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .overview-table,
+  .list-table {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .overview-table thead,
+  .list-table thead {
+    display: none;
+  }
+
+  .overview-table tbody,
+  .list-table tbody,
+  .overview-table tr,
+  .list-table tr,
+  .overview-table td,
+  .list-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .overview-table tr,
+  .list-table tr {
+    margin-bottom: 12px;
+    border: 1px solid rgba(28, 49, 102, 0.9);
+    border-radius: 16px;
+    background: rgba(4, 8, 15, 0.56);
+    overflow: hidden;
+  }
+
+  .overview-table td,
+  .list-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 13px 14px;
+    text-align: right !important;
+    border-bottom: 1px solid rgba(28, 49, 102, 0.48);
+  }
+
+  .overview-table td::before,
+  .list-table td::before {
+    flex: 0 0 92px;
+    color: #b8c6dd;
+    font-size: 13px;
+    font-weight: 900;
+    text-align: left;
+  }
+
+  .overview-table td:nth-child(1)::before { content: "主題"; }
+  .overview-table td:nth-child(2)::before { content: "報名進度"; }
+  .overview-table td:nth-child(3)::before { content: "剩餘名額"; }
+
+  .list-table td:nth-child(1)::before { content: "姓名"; }
+  .list-table td:nth-child(2)::before { content: "Email"; }
+  .list-table td:nth-child(3)::before { content: "主題"; }
+  .list-table td:nth-child(4)::before { content: "人數 / 眷屬"; }
+  .list-table td:nth-child(5)::before { content: "報名時間"; }
+  .list-table td:nth-child(6)::before { content: "操作"; }
+
+  .count-cell {
+    min-width: 0;
+  }
+
+  .progress-wrap,
+  .cap-bar-wrap {
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 6px;
+  }
+
+  .remaining-cell {
+    text-align: right;
+  }
+
+  .btn-admin-del {
+    width: 100%;
+  }
+}
