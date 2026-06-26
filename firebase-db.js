@@ -93,30 +93,16 @@ async function upsertBooking(user, themeId, maxCapacity, options = {}) {
 
   await runTransaction(db, async (tx) => {
     const existingSnap = await tx.get(bookingRef);
-    const existing = existingSnap.exists() ? existingSnap.data() : null;
-    const oldThemeId = existing?.themeId || null;
-    const oldTotalPeople = existing?.totalPeople || 1;
+    if (existingSnap.exists()) {
+      throw new Error("ALREADY_BOOKED");
+    }
 
     const counterSnap = await tx.get(counterRef);
     const currentCount = counterSnap.exists() ? counterSnap.data().count : 0;
 
-    if (oldThemeId === themeId) {
-      const seatChange = totalPeople - oldTotalPeople;
-      if (currentCount + seatChange > maxCapacity) throw new Error("FULL");
-      tx.set(counterRef, { count: Math.max(0, currentCount + seatChange) });
-    } else {
-      if (currentCount + totalPeople > maxCapacity) throw new Error("FULL");
+    if (currentCount + totalPeople > maxCapacity) throw new Error("FULL");
 
-      if (oldThemeId) {
-        const oldCounterRef = doc(db, "counters", oldThemeId);
-        const oldSnap = await tx.get(oldCounterRef);
-        const oldCount = oldSnap.exists() ? oldSnap.data().count : oldTotalPeople;
-        tx.set(oldCounterRef, { count: Math.max(0, oldCount - oldTotalPeople) });
-      }
-
-      tx.set(counterRef, { count: currentCount + totalPeople });
-    }
-
+    tx.set(counterRef, { count: currentCount + totalPeople });
     tx.set(bookingRef, {
       uid: user.uid,
       email: user.email,
@@ -124,7 +110,7 @@ async function upsertBooking(user, themeId, maxCapacity, options = {}) {
       themeId,
       dependents,
       totalPeople,
-      createdAt: existingSnap.exists() ? existing.createdAt : serverTimestamp(),
+      createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     });
   });

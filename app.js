@@ -131,6 +131,7 @@ function renderThemeCards() {
     const remaining = getRemaining(t);
     const full = remaining <= 0;
     const isBooked = myBooking?.themeId === t.id;
+    const lockedByOtherBooking = !!myBooking && !isBooked;
     const notEnough = !isBooked && remaining < partySize;
     const pct = Math.min((getCount(t.id) / t.capacity) * 100, 100);
 
@@ -152,7 +153,9 @@ function renderThemeCards() {
         </div>
         <div class="card-footer">
           ${isBooked
-            ? `<span class="badge-booked">✓ 已選此主題</span>`
+            ? `<span class="badge-booked">✓ 已鎖定此主題</span>`
+            : lockedByOtherBooking
+            ? `<span class="badge-full-sm">已完成預約，請先取消才能更改</span>`
             : full
             ? `<span class="badge-full-sm">額滿</span>`
             : notEnough
@@ -201,6 +204,15 @@ function renderMyBooking() {
 async function handleBook(themeId, capacity) {
   if (!currentUser) return;
 
+  // 已完成預約後一律鎖定，避免手滑改到其他主題或把眷屬人數洗掉。
+  myBooking = await getMyBooking(currentUser.uid);
+  if (myBooking) {
+    showToast("你已完成預約，如需更改主題或人數，請先取消目前預約。", true);
+    renderMyBooking();
+    renderThemeCards();
+    return;
+  }
+
   const rows = $$(".dependent-row");
   const dependents = getDependents();
   if (dependents.length !== rows.length) {
@@ -224,7 +236,12 @@ async function handleBook(themeId, capacity) {
     renderThemeCards();
     showToast("預約成功！");
   } catch (err) {
-    showToast(err.message === "FULL" ? "此主題名額不足，請調整人數或選擇其他主題。" : "預約失敗，請稍後再試。", true);
+    const message = err.message === "FULL"
+      ? "此主題名額不足，請調整人數或選擇其他主題。"
+      : err.message === "ALREADY_BOOKED"
+      ? "你已完成預約，如需更改主題或人數，請先取消目前預約。"
+      : "預約失敗，請稍後再試。";
+    showToast(message, true);
     if (btn) { btn.disabled = false; btn.textContent = "選擇此主題"; }
   }
 }
