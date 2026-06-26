@@ -1,594 +1,549 @@
 /* ======================================================
-   style.css — 密室逃脫報名系統
-   遊戲暗黑風：像素陰影 + 粗黑邊框 + 螢光accent
+   Easymap 部門密室逃脫活動報名系統
+   UI refresh: space / GIS / mission-control style
+   功能 id 保留給 app.js、admin.js 使用
    ====================================================== */
-
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:          #0A0F0A;
-  --bg-card:     #0F1610;
-  --bg-panel:    #121A13;
-  --border:      #1E2E1E;
-  --border-game: #2A4030;
-  --text:        #E8F0E0;
-  --text-muted:  #5A7A5A;
-  --accent:      #A8E060;
-  --accent-dim:  rgba(168,224,96,0.12);
-  --accent-dark: #6BAA20;
-  --red:         #E05050;
-  --orange:      #E09030;
-  --green:       #60C870;
-  --shadow-game: 4px 4px 0px #000;
-  --shadow-card: 6px 6px 0px #000;
-  --radius:      8px;
+  --bg: #04080f;
+  --bg-soft: #07111f;
+  --card: #0a1128;
+  --panel: #101f42;
+  --panel-2: #0b1833;
+  --border: #1c3166;
+  --border-soft: rgba(88, 166, 255, 0.22);
+  --text: #eef6ff;
+  --muted: #9aa8bd;
+  --muted-2: #6d7d96;
+  --neon: #00ffcc;
+  --neon-dark: #00a889;
+  --sky: #38bdf8;
+  --gold: #f59e0b;
+  --red: #ff5f66;
+  --green: #49e58f;
+  --shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+  --radius: 18px;
 }
+
+html { scroll-behavior: smooth; }
 
 body {
-  background: var(--bg);
-  background-image:
-    radial-gradient(ellipse at 20% 20%, rgba(40,80,30,0.18) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 80%, rgba(20,50,20,0.15) 0%, transparent 60%);
-  color: var(--text);
-  font-family: "Noto Sans TC", sans-serif;
-  font-size: 15px;
-  line-height: 1.65;
   min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 14%, rgba(0, 255, 204, 0.12), transparent 32%),
+    radial-gradient(circle at 88% 74%, rgba(56, 189, 248, 0.12), transparent 40%),
+    linear-gradient(180deg, #04080f 0%, #07111f 42%, #04080f 100%);
+  color: var(--text);
+  font-family: "Noto Sans TC", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+  overflow-x: hidden;
 }
 
-a { color: var(--accent); text-decoration: none; }
-a:hover { text-decoration: underline; }
-.hidden { display: none !important; }
-
-/* ---- 掃描線裝飾 ---- */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 3px,
-    rgba(0,0,0,0.06) 3px,
-    rgba(0,0,0,0.06) 4px
-  );
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(56, 189, 248, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.035) 1px, transparent 1px),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.025), rgba(255,255,255,0.025) 1px, transparent 1px, transparent 4px);
+  background-size: 48px 48px, 48px 48px, 100% 4px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.3));
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  width: 420px;
+  height: 420px;
+  right: -160px;
+  top: 120px;
+  background: radial-gradient(circle, rgba(0, 255, 204, 0.13), transparent 66%);
+  filter: blur(8px);
   pointer-events: none;
   z-index: 0;
 }
 
-/* ---- Header ---- */
-header {
-  background: #060C06;
-  border-bottom: 2px solid var(--border-game);
-  box-shadow: 0 2px 0 #000;
-  padding: 0 32px;
-  height: 60px;
+main, header { position: relative; z-index: 1; }
+main { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 42px 0 72px; }
+a { color: var(--neon); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.hidden { display: none !important; }
+
+/* Header */
+.site-header, header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 72px;
+  padding: 0 clamp(18px, 4vw, 42px);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  gap: 16px;
+  background: rgba(4, 8, 15, 0.88);
+  border-bottom: 1px solid rgba(0, 255, 204, 0.22);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(16px);
 }
 
-.header-brand { display: flex; align-items: center; gap: 10px; }
-.brand-icon { font-size: 20px; }
-.brand-title {
-  font-family: "Noto Serif TC", serif;
-  font-size: 15px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-  color: var(--accent);
-  text-shadow: 0 0 12px rgba(168,224,96,0.4);
-}
-
-.header-user {
-  display: flex;
+.header-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-icon {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
   align-items: center;
-  gap: 12px;
-  font-size: 13px;
-  color: var(--text-muted);
+  justify-content: center;
+  border-radius: 14px;
+  background: rgba(0, 255, 204, 0.12);
+  border: 1px solid rgba(0, 255, 204, 0.45);
+  box-shadow: inset 0 0 24px rgba(0, 255, 204, 0.08), 0 0 22px rgba(0, 255, 204, 0.14);
+  font-size: 21px;
+  flex: 0 0 auto;
 }
 
-/* ---- Game 按鈕基底 ---- */
-.btn-game {
-  border: 2px solid #000;
-  box-shadow: var(--shadow-game);
-  transition: transform 0.08s, box-shadow 0.08s;
+.brand-title {
+  display: block;
+  color: var(--neon);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  font-size: clamp(15px, 2vw, 19px);
+  line-height: 1.15;
 }
-.btn-game:active {
-  transform: translate(4px, 4px);
-  box-shadow: none;
+.brand-subtitle {
+  display: block;
+  margin-top: 2px;
+  font-family: "Share Tech Mono", monospace;
+  color: var(--muted-2);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
-/* ---- Buttons ---- */
-.btn-primary {
-  background: var(--accent);
-  color: #0A1A0A;
-  border: 2px solid #000;
-  box-shadow: var(--shadow-game);
-  padding: 10px 22px;
-  border-radius: var(--radius);
-  font-size: 14px;
+.header-user { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+.user-chip, #user-name {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #dffefa;
+  font-size: 12px;
   font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.08s, box-shadow 0.08s, background 0.15s;
-  letter-spacing: 0.04em;
+  border: 1px solid var(--border-soft);
+  background: rgba(10, 17, 40, 0.72);
+  border-radius: 999px;
+  padding: 7px 12px;
 }
-.btn-primary:hover { background: #C4F07A; }
-.btn-primary:active { transform: translate(4px,4px); box-shadow: none; }
 
-.btn-outline {
-  background: transparent;
-  color: var(--text-muted);
-  border: 2px solid var(--border-game);
-  box-shadow: 3px 3px 0 #000;
-  padding: 6px 14px;
-  border-radius: var(--radius);
+/* Buttons */
+button, .btn-primary, .btn-outline, .btn-google, .btn-select, .btn-cancel, .btn-admin-del {
+  font: inherit;
+  border: 0;
+  cursor: pointer;
+}
+
+.btn-outline, .header-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  color: #dcecff;
+  background: rgba(10, 17, 40, 0.72);
+  border: 1px solid rgba(56, 189, 248, 0.32);
   font-size: 13px;
-  cursor: pointer;
-  transition: transform 0.08s, box-shadow 0.08s, color 0.15s;
+  font-weight: 700;
+  transition: 0.18s ease;
+}
+.btn-outline:hover, .header-link:hover {
+  color: var(--neon);
+  border-color: rgba(0, 255, 204, 0.65);
+  box-shadow: 0 0 22px rgba(0, 255, 204, 0.12);
   text-decoration: none;
-  display: inline-block;
-}
-.btn-outline:hover { color: var(--text); border-color: var(--accent); text-decoration: none; }
-.btn-outline:active { transform: translate(3px,3px); box-shadow: none; }
-
-/* ---- Layout ---- */
-main {
-  max-width: 980px;
-  margin: 0 auto;
-  padding: 44px 24px 88px;
-  position: relative;
-  z-index: 1;
 }
 
-/* ---- 登入頁 ---- */
-#section-login, #section-denied {
+.btn-primary, .btn-google, .btn-select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 11px 18px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #00c9a7, #00ffcc);
+  color: #03100d;
+  font-weight: 900;
+  box-shadow: 0 5px 0 var(--neon-dark), 0 20px 36px rgba(0, 255, 204, 0.14);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.btn-primary:hover, .btn-google:hover, .btn-select:hover { filter: brightness(1.04); text-decoration: none; }
+.btn-primary:active, .btn-google:active, .btn-select:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--neon-dark); }
+.btn-google { width: min(100%, 420px); margin-top: 22px; font-size: 16px; }
+.btn-google-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(4, 8, 15, 0.88);
+  color: var(--neon);
+  font-family: "Share Tech Mono", monospace;
+  font-weight: 900;
+}
+
+.btn-select { width: 100%; font-size: 13px; min-height: 40px; padding: 9px 14px; border-radius: 12px; }
+.btn-cancel, .btn-admin-del {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 8px 13px;
+  border-radius: 12px;
+  color: #ffd9dc;
+  background: rgba(255, 95, 102, 0.12);
+  border: 1px solid rgba(255, 95, 102, 0.42);
+  font-weight: 800;
+  transition: 0.18s ease;
+}
+.btn-cancel:hover, .btn-admin-del:hover { background: rgba(255, 95, 102, 0.22); }
+button:disabled { cursor: not-allowed; opacity: 0.55; filter: grayscale(0.4); }
+
+/* Login / Hero */
+.hero-section {
+  min-height: calc(100vh - 180px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 65vh;
   text-align: center;
-  gap: 22px;
+  padding: 48px 0;
 }
-
-@keyframes float-key {
-  0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(-8px); }
-}
-
-.login-keyhole {
-  font-size: 72px;
-  animation: float-key 3.5s ease-in-out infinite;
-  filter: drop-shadow(0 0 16px rgba(168,224,96,0.35));
-}
-
-.login-title {
-  font-family: "Noto Serif TC", serif;
-  font-size: 32px;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  color: var(--accent);
-  text-shadow: 0 0 20px rgba(168,224,96,0.3);
-}
-
-.login-sub { color: var(--text-muted); font-size: 14px; max-width: 380px; }
-
-.login-notice {
-  background: rgba(168,224,96,0.08);
-  border: 2px solid rgba(168,224,96,0.25);
-  box-shadow: 4px 4px 0 #000;
-  border-radius: var(--radius);
-  padding: 13px 20px;
-  font-size: 14px;
-  color: #B8E880;
-  max-width: 420px;
-}
-
-.btn-google {
+.hero-orb {
+  position: relative;
+  width: 112px;
+  height: 112px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: var(--bg-card);
-  border: 2px solid var(--border-game);
-  box-shadow: var(--shadow-card);
-  color: var(--text);
-  padding: 14px 32px;
-  border-radius: var(--radius);
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.08s, box-shadow 0.08s, border-color 0.15s;
-  letter-spacing: 0.04em;
+  justify-content: center;
+  margin-bottom: 22px;
+  border-radius: 32px;
+  background: rgba(0, 255, 204, 0.08);
+  border: 1px solid rgba(0, 255, 204, 0.34);
+  font-size: 62px;
+  box-shadow: inset 0 0 40px rgba(0, 255, 204, 0.08), 0 0 70px rgba(0, 255, 204, 0.18);
 }
-.btn-google:hover { border-color: var(--accent); }
-.btn-google:active { transform: translate(6px,6px); box-shadow: none; }
-.btn-google-icon { font-size: 20px; font-weight: 900; color: var(--accent); }
-
-/* ---- Section title ---- */
-.section-title {
-  font-family: "Noto Serif TC", serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--accent-dark);
-  margin-bottom: 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.section-title::after {
+.hero-orb::after {
   content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border-game);
+  position: absolute;
+  inset: -18px;
+  border: 1px dashed rgba(56, 189, 248, 0.22);
+  border-radius: 40px;
 }
-
-/* ---- 我的預約 Panel ---- */
-.panel {
-  background: var(--bg-panel);
-  border: 2px solid var(--border-game);
-  box-shadow: var(--shadow-card);
+.hero-orb.danger { background: rgba(255, 95, 102, 0.08); border-color: rgba(255,95,102,0.35); box-shadow: 0 0 70px rgba(255,95,102,0.13); }
+.eyebrow {
+  color: var(--neon);
+  font-family: "Share Tech Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.danger-text { color: var(--red); }
+.login-title, .page-heading h2, .admin-title {
+  font-family: "Noto Serif TC", "Noto Sans TC", serif;
+  font-weight: 900;
+  color: var(--text);
+  letter-spacing: 0.03em;
+  line-height: 1.2;
+}
+.login-title { font-size: clamp(34px, 7vw, 60px); }
+.login-sub {
+  max-width: 640px;
+  margin: 16px auto 0;
+  color: var(--muted);
+  font-size: clamp(14px, 2vw, 16px);
+}
+.login-notice {
+  width: min(100%, 560px);
+  margin-top: 28px;
+  padding: 18px 20px;
+  border: 1px solid rgba(245, 158, 11, 0.32);
   border-radius: var(--radius);
-  padding: 20px 24px;
-  margin-bottom: 36px;
+  background: rgba(245, 158, 11, 0.08);
+  box-shadow: var(--shadow);
+  text-align: left;
+  color: #ffe9c2;
+  font-size: 13px;
 }
+.login-notice strong { display: block; color: var(--gold); margin-bottom: 8px; }
+.login-notice span { display: block; color: #d6c8a9; margin-top: 4px; }
+.denied-link { margin-top: 24px; }
 
-.no-booking { color: var(--text-muted); font-size: 14px; }
+/* Dashboard */
+.dashboard-section { display: flex; flex-direction: column; gap: 28px; }
+.page-heading {
+  padding: 28px;
+  border: 1px solid rgba(0, 255, 204, 0.22);
+  border-radius: 24px;
+  background: linear-gradient(135deg, rgba(10, 17, 40, 0.9), rgba(16, 31, 66, 0.55));
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  position: relative;
+}
+.page-heading::after {
+  content: "";
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  right: -70px;
+  top: -90px;
+  background: radial-gradient(circle, rgba(0, 255, 204, 0.17), transparent 68%);
+}
+.page-heading h2 { font-size: clamp(26px, 4vw, 40px); }
+.page-heading p:not(.eyebrow), .admin-sub { color: var(--muted); margin-top: 6px; }
 
+.panel-block {
+  border: 1px solid var(--border-soft);
+  border-radius: 24px;
+  background: rgba(10, 17, 40, 0.72);
+  box-shadow: var(--shadow);
+  padding: clamp(18px, 3vw, 24px);
+  backdrop-filter: blur(14px);
+}
+.section-heading, .list-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.section-title {
+  color: var(--neon);
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+}
+.section-tag {
+  flex: 0 0 auto;
+  font-family: "Share Tech Mono", monospace;
+  color: var(--sky);
+  font-size: 11px;
+  border: 1px solid rgba(56, 189, 248, 0.26);
+  background: rgba(56, 189, 248, 0.08);
+  border-radius: 999px;
+  padding: 5px 9px;
+  text-transform: uppercase;
+}
+.section-note { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+.panel, .overview-wrap, .list-wrap {
+  border: 1px solid rgba(28, 49, 102, 0.9);
+  border-radius: 18px;
+  background: rgba(4, 8, 15, 0.45);
+  overflow: hidden;
+}
+.panel { padding: 18px; }
+.no-booking, .loading-cell, .empty-cell, .error-cell { color: var(--muted); text-align: center; padding: 22px; }
+.error-cell { color: var(--red); }
+
+/* Booking */
 .booking-status {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 18px;
   flex-wrap: wrap;
 }
-
-.booking-label { color: var(--text-muted); font-size: 13px; }
-.booking-theme {
-  font-size: 17px;
-  margin-left: 8px;
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.btn-cancel {
-  background: transparent;
-  border: 2px solid #5A1A1A;
-  box-shadow: 3px 3px 0 #000;
-  color: #E07070;
-  padding: 7px 16px;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: transform 0.08s, box-shadow 0.08s;
-}
-.btn-cancel:hover { border-color: var(--red); }
-.btn-cancel:active { transform: translate(3px,3px); box-shadow: none; }
-
+.booking-info { display: flex; flex-direction: column; gap: 5px; }
+.booking-label { color: var(--muted); font-size: 13px; }
+.booking-theme { color: var(--gold); font-size: 24px; }
 .family-notice {
   margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(28, 49, 102, 0.7);
+  color: #e7c98d;
   font-size: 13px;
-  color: #D0A040;
-  background: rgba(224,144,48,0.08);
-  border-left: 3px solid #E09030;
-  border-radius: 0 6px 6px 0;
-  padding: 9px 14px;
 }
 
-/* ---- 名額總覽表 ---- */
-.overview-wrap {
-  background: var(--bg-panel);
-  border: 2px solid var(--border-game);
-  box-shadow: var(--shadow-card);
-  border-radius: var(--radius);
-  overflow: hidden;
-  margin-bottom: 36px;
+/* Tables */
+.overview-wrap, .list-wrap { overflow-x: auto; }
+.overview-table, .list-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 680px;
 }
-
-.overview-table { width: 100%; border-collapse: collapse; }
-
-.overview-table th {
-  background: #080E08;
-  padding: 11px 18px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-align: left;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  border-bottom: 2px solid var(--border-game);
-}
-
-.overview-table td {
-  padding: 16px 18px;
-  border-bottom: 1px solid var(--border);
-  vertical-align: middle;
-}
-
-.overview-table tr:last-child td { border-bottom: none; }
-.overview-table tr.row-full td { opacity: 0.38; }
-.overview-table tr:not(.row-full):hover td { background: rgba(168,224,96,0.04); }
-
-.theme-name-cell { min-width: 200px; }
-.theme-name-cell a { color: var(--text); font-weight: 700; font-size: 15px; letter-spacing: 0.02em; }
-.theme-name-cell a:hover { color: var(--accent); text-decoration: none; }
-.theme-range { display: block; font-size: 12px; color: var(--text-muted); margin-top: 3px; }
-
-.count-cell { min-width: 190px; }
-.progress-wrap {
-  background: #0A120A;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  height: 7px;
-  margin-bottom: 5px;
-  overflow: hidden;
-}
-.progress-bar {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.5s ease;
-}
-.bar-ok   { background: var(--green); box-shadow: 0 0 6px rgba(96,200,112,0.5); }
-.bar-low  { background: var(--orange); box-shadow: 0 0 6px rgba(224,144,48,0.5); }
-.bar-full { background: var(--red); }
-
-.count-label { font-size: 12px; color: var(--text-muted); font-family: monospace; }
-
-.remaining-cell { text-align: center; min-width: 80px; }
-.remaining-ok   { font-size: 24px; font-weight: 900; color: var(--green); text-shadow: 0 0 8px rgba(96,200,112,0.6); font-family: "Noto Serif TC", serif; }
-.remaining-low  { font-size: 24px; font-weight: 900; color: var(--orange); text-shadow: 0 0 8px rgba(224,144,48,0.6); font-family: "Noto Serif TC", serif; }
-.remaining-full { font-size: 24px; font-weight: 900; color: var(--red); font-family: "Noto Serif TC", serif; }
-
-.badge-full {
-  background: #1A0808;
-  color: #5A3030;
+th {
+  color: #b8c6dd;
+  background: rgba(4, 8, 15, 0.76);
+  border-bottom: 1px solid rgba(28, 49, 102, 0.9);
   font-size: 12px;
-  font-weight: 700;
-  padding: 4px 12px;
-  border-radius: 20px;
-  border: 1px solid #3A1A1A;
-  letter-spacing: 0.06em;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  padding: 14px 16px;
 }
+td {
+  padding: 16px;
+  border-bottom: 1px solid rgba(28, 49, 102, 0.48);
+  color: #d8e6f8;
+}
+tr:last-child td { border-bottom: 0; }
+tr:hover td { background: rgba(16, 31, 66, 0.24); }
+.row-full td { opacity: 0.68; }
+.theme-name-cell a { color: var(--text); font-weight: 900; }
+.theme-name-cell a:hover { color: var(--neon); }
+.theme-range, .card-range {
+  display: inline-flex;
+  margin-left: 8px;
+  color: var(--sky);
+  font-size: 12px;
+  font-weight: 800;
+}
+.count-cell { min-width: 260px; }
+.progress-wrap, .cap-bar-wrap {
+  width: min(100%, 220px);
+  height: 9px;
+  display: inline-block;
+  vertical-align: middle;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(4, 8, 15, 0.9);
+  border: 1px solid rgba(28, 49, 102, 0.9);
+  margin-right: 10px;
+}
+.progress-bar, .cap-bar { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
+.bar-ok { background: linear-gradient(90deg, var(--sky), var(--neon)); }
+.bar-low { background: linear-gradient(90deg, var(--gold), #ffd166); }
+.bar-full { background: linear-gradient(90deg, var(--red), #ff9a9e); }
+.count-label, .cap-text { color: var(--muted); font-family: "Share Tech Mono", monospace; font-size: 12px; }
+.remaining-cell { text-align: center; font-weight: 900; }
+.remaining-ok { color: var(--green); }
+.remaining-low { color: var(--gold); }
+.remaining-full { color: var(--red); }
+.badge-full, .badge-full-sm, .badge-booked {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+}
+.badge-full, .badge-full-sm { color: #ffd9dc; background: rgba(255, 95, 102, 0.16); border: 1px solid rgba(255, 95, 102, 0.38); }
+.badge-booked { color: #04120f; background: var(--neon); }
 
-/* ---- 主題卡片 ---- */
+/* Cards */
 .cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-  gap: 16px;
-  margin-bottom: 40px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
 }
-
-@keyframes card-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
 .theme-card {
-  background: var(--bg-card);
-  border: 2px solid var(--border-game);
-  box-shadow: var(--shadow-card);
-  border-radius: var(--radius);
-  overflow: hidden;
+  position: relative;
+  min-height: 250px;
   display: flex;
   flex-direction: column;
-  transition: transform 0.1s, box-shadow 0.1s, border-color 0.2s;
-  animation: card-in 0.3s ease both;
+  justify-content: space-between;
+  padding: 20px;
+  border: 1px solid rgba(28, 49, 102, 0.95);
+  border-radius: 20px;
+  background:
+    linear-gradient(160deg, rgba(16, 31, 66, 0.82), rgba(4, 8, 15, 0.78)),
+    radial-gradient(circle at 80% 10%, rgba(0, 255, 204, 0.08), transparent 36%);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.theme-card::before {
+  content: "Escape Mission";
+  color: rgba(56, 189, 248, 0.32);
+  font-family: "Share Tech Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 .theme-card:hover {
-  border-color: #3A6040;
-  transform: translate(-2px,-2px);
-  box-shadow: 8px 8px 0 #000;
+  transform: translateY(-4px);
+  border-color: rgba(0, 255, 204, 0.62);
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.34), 0 0 28px rgba(0, 255, 204, 0.1);
 }
-.theme-card.card-selected {
-  border-color: var(--accent);
-  background: #0E1A0A;
-  box-shadow: 6px 6px 0 #000, 0 0 20px rgba(168,224,96,0.15);
-}
-.theme-card.card-full {
-  opacity: 0.35;
-  pointer-events: none;
-}
+.card-selected { border-color: rgba(0, 255, 204, 0.82); box-shadow: 0 0 32px rgba(0, 255, 204, 0.13); }
+.card-full { filter: grayscale(0.35); opacity: 0.72; }
+.card-header { margin-top: 8px; }
+.card-title { color: var(--text); font-size: 22px; font-weight: 900; line-height: 1.25; }
+.card-range { margin-left: 0; margin-top: 8px; }
+.card-body { margin-top: 18px; display: flex; flex-direction: column; gap: 16px; }
+.card-link { font-size: 13px; font-weight: 800; }
+.card-capacity { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.card-footer { margin-top: 20px; }
 
-.card-header {
-  padding: 18px 20px 12px;
-  border-bottom: 1px solid var(--border-game);
-}
-.card-title {
-  font-family: "Noto Serif TC", serif;
-  font-size: 17px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-}
-.card-range { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-
-.card-body { padding: 15px 20px; flex: 1; }
-.card-link {
-  font-size: 13px;
-  display: inline-block;
-  margin-bottom: 13px;
-  color: var(--accent);
-  letter-spacing: 0.02em;
-}
-
-.cap-bar-wrap {
-  background: #0A120A;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  height: 6px;
-  margin-bottom: 6px;
-  overflow: hidden;
-}
-.cap-bar { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
-.cap-text { font-size: 12px; color: var(--text-muted); font-family: monospace; }
-
-.card-footer { padding: 13px 20px 18px; }
-
-.btn-select {
-  width: 100%;
-  background: var(--accent);
-  color: #0A1A0A;
-  border: 2px solid #000;
-  box-shadow: var(--shadow-game);
-  padding: 11px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  letter-spacing: 0.06em;
-  transition: transform 0.08s, box-shadow 0.08s, background 0.15s;
-}
-.btn-select:hover { background: #C4F07A; }
-.btn-select:active { transform: translate(4px,4px); box-shadow: none; }
-.btn-select:disabled { background: #2A3A2A; color: #3A5A3A; border-color: #1A2A1A; box-shadow: none; cursor: not-allowed; }
-
-.badge-booked {
-  display: block;
-  text-align: center;
-  color: var(--accent);
-  font-size: 14px;
-  font-weight: 700;
-  padding: 9px 0;
-  letter-spacing: 0.08em;
-  text-shadow: 0 0 8px rgba(168,224,96,0.4);
-}
-.badge-full-sm {
-  display: block;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 13px;
-  padding: 9px 0;
-  letter-spacing: 0.06em;
-}
-
-/* ---- 管理員後台 ---- */
-.admin-header { margin-bottom: 28px; }
-.admin-title {
-  font-family: "Noto Serif TC", serif;
-  font-size: 24px;
-  font-weight: 900;
-  letter-spacing: 0.06em;
-  color: var(--accent);
-  text-shadow: 0 0 16px rgba(168,224,96,0.25);
-  margin-bottom: 4px;
-}
-.admin-sub { color: var(--text-muted); font-size: 13px; }
-
+/* Admin */
 .admin-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 26px;
-  border-bottom: 2px solid var(--border-game);
+  display: inline-flex;
+  padding: 5px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: rgba(4, 8, 15, 0.54);
+  box-shadow: var(--shadow);
 }
-
 .tab-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  padding: 10px 20px;
-  cursor: pointer;
-  border-bottom: 3px solid transparent;
-  margin-bottom: -2px;
-  transition: color 0.2s, border-color 0.2s;
+  min-height: 38px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  color: var(--muted);
+  background: transparent;
+  font-weight: 900;
+  transition: 0.18s ease;
 }
 .tab-btn:hover { color: var(--text); }
-.tab-btn.tab-active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-active { color: #03100d; background: var(--neon); }
+.list-toolbar { align-items: center; }
+.list-table th:last-child, .list-table td:last-child { text-align: center; }
+#booking-count { color: var(--neon); }
 
-.list-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-.list-count { font-size: 13px; color: var(--text-muted); }
-.list-count span { color: var(--text); font-weight: 700; }
-
-.table-wrap {
-  background: var(--bg-panel);
-  border: 2px solid var(--border-game);
-  box-shadow: var(--shadow-card);
-  border-radius: var(--radius);
-  overflow: hidden;
-}
-
-.booking-table { width: 100%; border-collapse: collapse; }
-.booking-table th {
-  background: #080E08;
-  padding: 11px 18px;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-align: left;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  border-bottom: 2px solid var(--border-game);
-}
-.booking-table td {
-  padding: 14px 18px;
-  font-size: 14px;
-  border-bottom: 1px solid var(--border);
-}
-.booking-table tr:last-child td { border-bottom: none; }
-.booking-table tr:hover td { background: rgba(168,224,96,0.03); }
-
-.btn-admin-del {
-  background: transparent;
-  border: 2px solid #5A1A1A;
-  box-shadow: 2px 2px 0 #000;
-  color: #E07070;
-  padding: 4px 12px;
-  border-radius: 5px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.08s, box-shadow 0.08s;
-}
-.btn-admin-del:hover { border-color: var(--red); }
-.btn-admin-del:active { transform: translate(2px,2px); box-shadow: none; }
-
-.loading-cell, .empty-cell, .error-cell {
-  text-align: center;
-  padding: 36px;
-  color: var(--text-muted);
-  font-size: 14px;
-}
-
-/* ---- Toast ---- */
+/* Toast */
 .toast {
   position: fixed;
-  bottom: 32px;
   left: 50%;
-  transform: translateX(-50%) translateY(16px);
-  padding: 13px 26px;
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  bottom: 28px;
+  z-index: 100;
+  transform: translate(-50%, 16px);
   opacity: 0;
-  transition: opacity 0.25s, transform 0.25s;
-  z-index: 9999;
-  pointer-events: none;
-  border: 2px solid;
-  box-shadow: 4px 4px 0 #000;
+  min-width: min(420px, calc(100% - 32px));
+  padding: 13px 16px;
+  border-radius: 14px;
+  text-align: center;
+  font-weight: 900;
+  box-shadow: var(--shadow);
+  transition: 0.28s ease;
 }
-.toast-show { opacity: 1; transform: translateX(-50%) translateY(0); }
-.toast-success { background: #0A1E0E; color: var(--accent); border-color: var(--accent-dark); }
-.toast-error   { background: #1E0A0A; color: #E07070; border-color: #5A2020; }
+.toast-show { transform: translate(-50%, 0); opacity: 1; }
+.toast-success { color: var(--neon); background: rgba(10, 17, 40, 0.96); border: 1px solid rgba(0,255,204,0.42); }
+.toast-error { color: #ffd9dc; background: rgba(66, 16, 22, 0.96); border: 1px solid rgba(255,95,102,0.48); }
 
-/* ---- Responsive ---- */
-@media (max-width: 640px) {
-  header { padding: 0 16px; }
-  main { padding: 28px 16px 64px; }
+@media (max-width: 900px) {
+  .cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .site-header, header { height: auto; min-height: 72px; padding-top: 12px; padding-bottom: 12px; align-items: flex-start; }
+}
+
+@media (max-width: 680px) {
+  main { width: min(100% - 24px, 1120px); padding-top: 28px; }
+  .site-header, header { flex-direction: column; align-items: stretch; }
+  .header-user { justify-content: flex-start; }
   .cards-grid { grid-template-columns: 1fr; }
-  .booking-status { flex-direction: column; align-items: flex-start; }
-  .overview-table th:nth-child(2),
-  .overview-table td:nth-child(2) { display: none; }
+  .section-heading, .list-toolbar, .booking-status { flex-direction: column; align-items: stretch; }
+  .section-tag { width: fit-content; }
+  .login-title { font-size: 34px; }
+  .hero-section { padding-top: 36px; justify-content: flex-start; }
+  .theme-range { display: block; margin-left: 0; margin-top: 4px; }
 }

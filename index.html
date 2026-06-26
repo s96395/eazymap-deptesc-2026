@@ -3,72 +3,101 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>部門密室逃脫活動報名</title>
-  
-  
-  
+  <title>Easymap 易圖科技｜部門密室逃脫活動報名</title>
+  <meta name="description" content="Easymap 易圖科技 2026 部門密室逃脫活動報名系統" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Share+Tech+Mono&family=Noto+Serif+TC:wght@700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-<header>
+<header class="site-header">
   <div class="header-brand">
-    <span class="brand-icon">🔐</span>
-    <span class="brand-title">部門密室逃脫活動</span>
+    <span class="brand-icon" aria-hidden="true">🛰️</span>
+    <div>
+      <span class="brand-title">Easymap 易圖科技</span>
+      <span class="brand-subtitle">Department Escape Festival 2026</span>
+    </div>
   </div>
   <div class="header-user">
-    <span id="user-name" class="hidden"></span>
+    <span id="user-name" class="hidden user-chip"></span>
+    <a href="admin.html" class="btn-outline header-link">管理後台</a>
     <button id="btn-logout" class="btn-outline hidden">登出</button>
   </div>
 </header>
 
 <main>
 
-  <!-- 登入頁 -->
-  <section id="section-login">
-    <div class="login-keyhole">🗝️</div>
+  <section id="section-login" class="hero-section">
+    <div class="hero-orb" aria-hidden="true">🔓</div>
+    <p class="eyebrow">EASYMAP SPACE MISSION</p>
     <h1 class="login-title">2026 部門密室逃脫</h1>
-    <p class="login-sub">9 月 11 日（五）19:00 ／ 請以公司 Google 帳號登入後選擇主題</p>
+    <p class="login-sub">
+      9 月 11 日（五）19:00 正式集合。<br>
+      請使用公司 Google 帳號登入後，選擇想挑戰的密室主題。
+    </p>
+
     <div class="login-notice">
-      ⚠️ 本次活動開放攜帶眷屬，眷屬費用請自行負擔，請事先確認。
+      <strong>報名前提醒</strong>
+      <span>一個 Google 帳號限填一次。系統會即時顯示剩餘名額，額滿後將無法選擇該主題。</span>
+      <span>若攜帶眷屬，眷屬費用需自行負擔，請事先確認。</span>
     </div>
+
     <button id="btn-login" class="btn-google">
       <span class="btn-google-icon">G</span>
       使用 Google 帳號登入
     </button>
   </section>
 
-  <!-- 報名主頁（所有人，含管理員） -->
-  <section id="section-main" class="hidden">
-
-    <p class="section-title">我的預約</p>
-    <div class="panel" id="my-booking">
-      <p class="no-booking">尚未選擇主題，請從下方選一個你想玩的密室。</p>
+  <section id="section-main" class="hidden dashboard-section">
+    <div class="page-heading">
+      <p class="eyebrow">MISSION CONTROL</p>
+      <h2>部門逃脫任務面板</h2>
+      <p>查看你的預約狀態、各主題剩餘名額，並選擇本次要挑戰的密室。</p>
     </div>
 
-    <p class="section-title">各主題名額總覽</p>
-    <div class="overview-wrap">
-      <table class="overview-table">
-        <thead>
-          <tr>
-            <th>主題</th>
-            <th>報名進度</th>
-            <th style="text-align:center">剩餘名額</th>
-          </tr>
-        </thead>
-        <tbody id="theme-overview">
-          <tr><td colspan="3" class="loading-cell">載入中…</td></tr>
-        </tbody>
-      </table>
-    </div>
+    <section class="panel-block">
+      <div class="section-heading">
+        <p class="section-title">我的預約</p>
+        <span class="section-tag">My Booking</span>
+      </div>
+      <div class="panel" id="my-booking">
+        <p class="no-booking">尚未選擇主題，請從下方選一個你想玩的密室。</p>
+      </div>
+    </section>
 
-    <p class="section-title">選擇密室主題</p>
-    <p style="font-size:13px; color:#7A7870; margin-bottom:16px; margin-top:-10px;">
-      點選下方連結可查看各主題介紹，選好後按「選擇此主題」完成報名。<br>
-      ⚠️ 若攜帶眷屬，眷屬費用需自行負擔，請事先確認。
-    </p>
-    <div class="cards-grid" id="theme-cards"></div>
+    <section class="panel-block">
+      <div class="section-heading">
+        <p class="section-title">各主題名額總覽</p>
+        <span class="section-tag">Real-time Capacity</span>
+      </div>
+      <div class="overview-wrap">
+        <table class="overview-table">
+          <thead>
+            <tr>
+              <th>主題</th>
+              <th>報名進度</th>
+              <th style="text-align:center">剩餘名額</th>
+            </tr>
+          </thead>
+          <tbody id="theme-overview">
+            <tr><td colspan="3" class="loading-cell">載入中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
+    <section class="panel-block">
+      <div class="section-heading">
+        <div>
+          <p class="section-title">選擇密室主題</p>
+          <p class="section-note">點選主題連結可查看官方介紹，選好後按「選擇此主題」完成報名。</p>
+        </div>
+        <span class="section-tag">Escape Themes</span>
+      </div>
+      <div class="cards-grid" id="theme-cards"></div>
+    </section>
   </section>
 
 </main>

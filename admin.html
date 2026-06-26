@@ -3,62 +3,68 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>管理後台｜部門密室逃脫活動</title>
-  
-  
-  
+  <title>Easymap 易圖科技｜管理後台</title>
+  <meta name="description" content="Easymap 易圖科技部門密室逃脫活動管理後台" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Share+Tech+Mono&family=Noto+Serif+TC:wght@700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-<header>
+<header class="site-header">
   <div class="header-brand">
-    <span class="brand-icon">🔐</span>
-    <span class="brand-title">部門密室逃脫｜管理後台</span>
+    <span class="brand-icon" aria-hidden="true">🛰️</span>
+    <div>
+      <span class="brand-title">Easymap 易圖科技</span>
+      <span class="brand-subtitle">Admin Mission Control</span>
+    </div>
   </div>
   <div class="header-user">
-    <span id="user-name" class="hidden"></span>
-    <a href="index.html" class="btn-outline" style="text-decoration:none; padding:7px 16px; font-size:13px;">← 前往報名頁</a>
+    <span id="user-name" class="hidden user-chip"></span>
+    <a href="index.html" class="btn-outline header-link">前往報名頁</a>
     <button id="btn-logout" class="btn-outline hidden">登出</button>
   </div>
 </header>
 
 <main>
 
-  <!-- 未登入 -->
-  <section id="section-login">
-    <div class="login-keyhole">🔒</div>
+  <section id="section-login" class="hero-section">
+    <div class="hero-orb" aria-hidden="true">🔐</div>
+    <p class="eyebrow">ADMIN ACCESS</p>
     <h1 class="login-title">管理員登入</h1>
-    <p class="login-sub">此頁面僅限管理員帳號使用</p>
+    <p class="login-sub">此頁面僅限管理員帳號使用，請以公司 Google 帳號登入。</p>
     <button id="btn-login" class="btn-google">
       <span class="btn-google-icon">G</span>
       使用 Google 帳號登入
     </button>
   </section>
 
-  <!-- 非管理員提示 -->
-  <section id="section-denied" class="hidden">
-    <div class="login-keyhole">🚫</div>
+  <section id="section-denied" class="hidden hero-section">
+    <div class="hero-orb danger" aria-hidden="true">🚫</div>
+    <p class="eyebrow danger-text">ACCESS DENIED</p>
     <h1 class="login-title">無存取權限</h1>
-    <p class="login-sub">你的帳號不在管理員名單內。</p>
-    <a href="index.html" class="btn-primary" style="text-decoration:none; display:inline-block; margin-top:16px;">回到報名頁</a>
+    <p class="login-sub">你的帳號不在管理員名單內，請回到報名頁操作。</p>
+    <a href="index.html" class="btn-primary denied-link">回到報名頁</a>
   </section>
 
-  <!-- 管理員後台 -->
-  <section id="section-admin" class="hidden">
-
-    <div class="admin-header">
-      <h2 class="admin-title">管理後台</h2>
+  <section id="section-admin" class="hidden dashboard-section">
+    <div class="admin-header page-heading">
+      <p class="eyebrow">MISSION CONTROL</p>
+      <h2 class="admin-title">部門逃脫調度總部</h2>
       <p class="admin-sub">2026 部門密室逃脫活動 ／ 9 月 11 日（五）19:00</p>
     </div>
 
     <div class="admin-tabs">
-      <button id="tab-overview" class="tab-btn tab-active">📊 名額總覽</button>
-      <button id="tab-list" class="tab-btn">📋 預約名單</button>
+      <button id="tab-overview" class="tab-btn tab-active">名額總覽</button>
+      <button id="tab-list" class="tab-btn">預約名單</button>
     </div>
 
-    <!-- 名額總覽 -->
-    <div id="admin-overview-panel">
+    <div id="admin-overview-panel" class="panel-block">
+      <div class="section-heading">
+        <p class="section-title">各主題名額總覽</p>
+        <span class="section-tag">Real-time Capacity</span>
+      </div>
       <div class="overview-wrap">
         <table class="overview-table">
           <thead>
@@ -75,19 +81,22 @@
       </div>
     </div>
 
-    <!-- 預約名單 -->
-    <div id="admin-list-panel" class="hidden">
+    <div id="admin-list-panel" class="hidden panel-block">
       <div class="list-toolbar">
-        <p class="list-count">共 <span id="booking-count">—</span> 筆預約</p>
+        <div>
+          <p class="section-title">預約名單</p>
+          <p class="section-note">目前共 <strong id="booking-count">0</strong> 筆預約資料。</p>
+        </div>
         <button id="btn-export" class="btn-primary">匯出 CSV</button>
       </div>
-      <div class="table-wrap">
-        <table class="booking-table">
+
+      <div class="list-wrap">
+        <table class="list-table">
           <thead>
             <tr>
               <th>姓名</th>
               <th>Email</th>
-              <th>選擇主題</th>
+              <th>主題</th>
               <th>報名時間</th>
               <th>操作</th>
             </tr>
@@ -98,7 +107,6 @@
         </table>
       </div>
     </div>
-
   </section>
 
 </main>
