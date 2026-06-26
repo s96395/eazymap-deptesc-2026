@@ -56,14 +56,12 @@ function onAuthChange(callback) {
  * @param {function} callback - 收到 { themeId: count } 物件
  */
 function onBookingCountsChange(callback) {
-  // 顯示名額以 bookings 為主，避免 counters 與名單不同步時畫面誤判。
-  return onSnapshot(collection(db, "bookings"), (snapshot) => {
+  // 名額同步以 counters 為唯一公開來源，避免一般使用者讀取所有 bookings 明細。
+  return onSnapshot(collection(db, "counters"), (snapshot) => {
     const counts = {};
     snapshot.forEach((d) => {
       const data = d.data();
-      if (!data.themeId) return;
-      const totalPeople = Number(data.totalPeople) || (Array.isArray(data.dependents) ? 1 + data.dependents.length : 1);
-      counts[data.themeId] = (counts[data.themeId] || 0) + totalPeople;
+      counts[d.id] = Number(data.count) || 0;
     });
     callback(counts);
   });
@@ -154,19 +152,23 @@ async function upsertBooking(user, themeId, maxCapacity, options = {}) {
 /**
  * 取消預約
  * @param {string} uid
- * @param {string} themeId
  */
-async function cancelBooking(uid, themeId) {
+async function cancelBooking(uid) {
   const bookingRef = doc(db, "bookings", uid);
-  const counterRef = doc(db, "counters", themeId);
 
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(bookingRef);
     if (!snap.exists()) return;
+
     const booking = snap.data();
-    const totalPeople = booking.totalPeople || 1;
+    const themeId = booking.themeId;
+    if (!themeId) throw new Error("INVALID_BOOKING");
+
+    const totalPeople = Number(booking.totalPeople) || (Array.isArray(booking.dependents) ? 1 + booking.dependents.length : 1);
+    const counterRef = doc(db, "counters", themeId);
     const counterSnap = await tx.get(counterRef);
-    const count = counterSnap.exists() ? counterSnap.data().count : totalPeople;
+    const count = counterSnap.exists() ? Number(counterSnap.data().count) || 0 : totalPeople;
+
     tx.set(counterRef, { count: Math.max(0, count - totalPeople) });
     tx.delete(bookingRef);
   });
@@ -186,10 +188,26 @@ async function getAllBookings() {
 /**
  * 管理員刪除指定預約
  * @param {string} uid
- * @param {string} themeId
  */
-async function adminDeleteBooking(uid, themeId) {
-  await cancelBooking(uid, themeId);
+async function adminDeleteBooking(uid) {
+  const bookingRef = doc(db, "bookings", uid);
+
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(bookingRef);
+    if (!snap.exists()) return;
+
+    const booking = snap.data();
+    const themeId = booking.themeId;
+    if (!themeId) throw new Error("INVALID_BOOKING");
+
+    const totalPeople = Number(booking.totalPeople) || (Array.isArray(booking.dependents) ? 1 + booking.dependents.length : 1);
+    const counterRef = doc(db, "counters", themeId);
+    const counterSnap = await tx.get(counterRef);
+    const count = counterSnap.exists() ? Number(counterSnap.data().count) || 0 : totalPeople;
+
+    tx.set(counterRef, { count: Math.max(0, count - totalPeople) });
+    tx.delete(bookingRef);
+  });
 }
 
 export {
