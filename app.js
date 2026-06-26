@@ -37,15 +37,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const nameEl = $("#user-name");
     const logoutBtn = $("#btn-logout");
 
-    if (unsubscribeCounts) unsubscribeCounts();
-    if (unsubscribeMyBooking) unsubscribeMyBooking();
-
-    unsubscribeCounts = onBookingCountsChange((counts) => {
-      bookingCounts = counts;
-      if (currentUser) renderThemeCards();
-    });
+    if (unsubscribeCounts) { unsubscribeCounts(); unsubscribeCounts = null; }
+    if (unsubscribeMyBooking) { unsubscribeMyBooking(); unsubscribeMyBooking = null; }
 
     if (user) {
+      unsubscribeCounts = onBookingCountsChange((counts) => {
+        bookingCounts = counts;
+        renderThemeCards();
+      });
       if (nameEl) { nameEl.textContent = user.displayName || user.email; nameEl.classList.remove("hidden"); }
       logoutBtn?.classList.remove("hidden");
       unsubscribeMyBooking = onMyBookingChange(user.uid, (booking) => {
@@ -55,6 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       nameEl?.classList.add("hidden");
       logoutBtn?.classList.add("hidden");
+      bookingCounts = {};
       myBooking = null;
       showLogin();
     }
@@ -256,7 +256,7 @@ async function handleCancel() {
   if (!myBooking || !currentUser) return;
   if (!confirm("確定要取消預約嗎？")) return;
   try {
-    await cancelBooking(currentUser.uid, myBooking.themeId);
+    await cancelBooking(currentUser.uid);
     myBooking = null;
     renderMyBooking();
     renderThemeCards();

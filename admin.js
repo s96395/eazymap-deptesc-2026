@@ -9,7 +9,6 @@ import {
   onAuthChange,
   onBookingCountsChange,
   onAllBookingsChange,
-  syncCountersFromBookings,
   getAllBookings,
   adminDeleteBooking
 } from "./firebase-db.js";
@@ -53,9 +52,6 @@ document.addEventListener("DOMContentLoaded", () => {
         if (unsubscribeCounts) unsubscribeCounts();
         if (unsubscribeBookings) unsubscribeBookings();
 
-        // 進後台時先把 counters 修回與 bookings 一致，避免舊版測試造成名額不同步。
-        syncCountersFromBookings(THEMES.map((t) => t.id)).catch((err) => console.warn("sync counters failed", err));
-
         unsubscribeCounts = onBookingCountsChange((counts) => {
           bookingCounts = counts;
           renderAdminOverview();
@@ -65,11 +61,19 @@ document.addEventListener("DOMContentLoaded", () => {
           renderAdminList(bookings);
         });
       } else {
+        if (unsubscribeCounts) { unsubscribeCounts(); unsubscribeCounts = null; }
+        if (unsubscribeBookings) { unsubscribeBookings(); unsubscribeBookings = null; }
+        bookingCounts = {};
+        latestBookings = [];
         $("#section-login")?.classList.add("hidden");
         $("#section-denied")?.classList.remove("hidden");
         $("#section-admin")?.classList.add("hidden");
       }
     } else {
+      if (unsubscribeCounts) { unsubscribeCounts(); unsubscribeCounts = null; }
+      if (unsubscribeBookings) { unsubscribeBookings(); unsubscribeBookings = null; }
+      bookingCounts = {};
+      latestBookings = [];
       nameEl?.classList.add("hidden");
       logoutBtn?.classList.add("hidden");
       $("#section-login")?.classList.remove("hidden");
@@ -156,8 +160,7 @@ function renderAdminList(bookings = latestBookings) {
     btn.addEventListener("click", async () => {
       if (!confirm(`確定要刪除這筆預約嗎？`)) return;
       try {
-        await adminDeleteBooking(btn.dataset.uid, btn.dataset.theme);
-        await syncCountersFromBookings(THEMES.map((t) => t.id));
+        await adminDeleteBooking(btn.dataset.uid);
         showToast("已刪除預約。");
       } catch (err) {
         showToast("刪除失敗，請稍後再試。", true);

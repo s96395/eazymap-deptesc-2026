@@ -1,0 +1,112 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && request.auth.token.email in [
+        'yoyoshen@gis.fcu.edu.tw',
+        'irishuang@gis.fcu.edu.tw',
+        'clarachou@gis.fcu.edu.tw'
+      ];
+    }
+
+    function validTheme(themeId) {
+      return themeId in [
+        'butterfly-valley',
+        'death-attic',
+        'forsaken-girl',
+        'diesel-street',
+        'dark-alley'
+      ];
+    }
+
+    function themeCapacity(themeId) {
+      return themeId == 'butterfly-valley' ? 5 :
+        themeId == 'death-attic' ? 7 :
+        themeId == 'forsaken-girl' ? 10 :
+        themeId == 'diesel-street' ? 5 :
+        themeId == 'dark-alley' ? 8 : 0;
+    }
+
+    function bookingPath(uid) {
+      return /databases/$(database)/documents/bookings/$(uid);
+    }
+
+    function counterPath(themeId) {
+      return /databases/$(database)/documents/counters/$(themeId);
+    }
+
+    function validBookingShape(uid) {
+      return request.resource.data.keys().hasOnly([
+          'uid', 'email', 'displayName', 'themeId', 'dependents',
+          'totalPeople', 'createdAt', 'updatedAt'
+        ]) &&
+        request.resource.data.uid == uid &&
+        request.resource.data.email == request.auth.token.email &&
+        request.resource.data.displayName is string &&
+        request.resource.data.themeId is string &&
+        validTheme(request.resource.data.themeId) &&
+        request.resource.data.dependents is list &&
+        request.resource.data.totalPeople is int &&
+        request.resource.data.totalPeople == request.resource.data.dependents.size() + 1 &&
+        request.resource.data.totalPeople > 0 &&
+        request.resource.data.totalPeople <= themeCapacity(request.resource.data.themeId);
+    }
+
+    function counterCountIsValid(themeId) {
+      return request.resource.data.keys().hasOnly(['count']) &&
+        request.resource.data.count is int &&
+        request.resource.data.count >= 0 &&
+        request.resource.data.count <= themeCapacity(themeId);
+    }
+
+    function createsOwnBookingForCounter(themeId) {
+      return isSignedIn() &&
+        validTheme(themeId) &&
+        exists(counterPath(themeId)) &&
+        !exists(bookingPath(request.auth.uid)) &&
+        existsAfter(bookingPath(request.auth.uid)) &&
+        getAfter(bookingPath(request.auth.uid)).data.themeId == themeId &&
+        getAfter(bookingPath(request.auth.uid)).data.totalPeople is int &&
+        request.resource.data.count == resource.data.count + getAfter(bookingPath(request.auth.uid)).data.totalPeople;
+    }
+
+    function deletesOwnBookingForCounter(themeId) {
+      return isSignedIn() &&
+        validTheme(themeId) &&
+        exists(bookingPath(request.auth.uid)) &&
+        !existsAfter(bookingPath(request.auth.uid)) &&
+        get(bookingPath(request.auth.uid)).data.themeId == themeId &&
+        get(bookingPath(request.auth.uid)).data.totalPeople is int &&
+        request.resource.data.count == resource.data.count - get(bookingPath(request.auth.uid)).data.totalPeople;
+    }
+
+    match /bookings/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == uid && validBookingShape(uid) &&
+        exists(counterPath(request.resource.data.themeId)) &&
+        getAfter(counterPath(request.resource.data.themeId)).data.count ==
+          get(counterPath(request.resource.data.themeId)).data.count + request.resource.data.totalPeople;
+      allow update: if false;
+      allow delete: if isSignedIn() && (
+        (request.auth.uid == uid &&
+          getAfter(counterPath(resource.data.themeId)).data.count == get(counterPath(resource.data.themeId)).data.count - resource.data.totalPeople) ||
+        isAdmin()
+      );
+    }
+
+    match /counters/{themeId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() && counterCountIsValid(themeId);
+      allow update: if counterCountIsValid(themeId) && (
+        isAdmin() ||
+        createsOwnBookingForCounter(themeId) ||
+        deletesOwnBookingForCounter(themeId)
+      );
+      allow delete: if false;
+    }
+  }
+}
