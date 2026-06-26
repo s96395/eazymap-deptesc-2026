@@ -8,6 +8,8 @@ import {
   logout,
   onAuthChange,
   onBookingCountsChange,
+  onAllBookingsChange,
+  syncCountersFromBookings,
   getAllBookings,
   adminDeleteBooking
 } from "./firebase-db.js";
@@ -28,6 +30,8 @@ const ADMIN_EMAILS = [
 
 let bookingCounts = {};
 let unsubscribeCounts = null;
+let unsubscribeBookings = null;
+let latestBookings = [];
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -47,11 +51,19 @@ document.addEventListener("DOMContentLoaded", () => {
         $("#section-admin")?.classList.remove("hidden");
 
         if (unsubscribeCounts) unsubscribeCounts();
+        if (unsubscribeBookings) unsubscribeBookings();
+
+        // 進後台時先把 counters 修回與 bookings 一致，避免舊版測試造成名額不同步。
+        syncCountersFromBookings(THEMES.map((t) => t.id)).catch((err) => console.warn("sync counters failed", err));
+
         unsubscribeCounts = onBookingCountsChange((counts) => {
           bookingCounts = counts;
           renderAdminOverview();
         });
-        loadAdminList();
+        unsubscribeBookings = onAllBookingsChange((bookings) => {
+          latestBookings = bookings;
+          renderAdminList(bookings);
+        });
       } else {
         $("#section-login")?.classList.add("hidden");
         $("#section-denied")?.classList.remove("hidden");
@@ -110,52 +122,57 @@ function renderAdminOverview() {
   }).join("");
 }
 
-async function loadAdminList() {
+function renderAdminList(bookings = latestBookings) {
   const tbody = $("#booking-list-body");
   if (!tbody) return;
-  tbody.innerHTML = `<tr><td colspan="6" class="loading-cell">載入中…</td></tr>`;
-  try {
-    const bookings = await getAllBookings();
-    const countEl = $("#booking-count");
-    if (countEl) countEl.textContent = bookings.length;
 
-    if (bookings.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="empty-cell">目前尚無預約資料。</td></tr>`;
-      return;
-    }
+  const countEl = $("#booking-count");
+  if (countEl) countEl.textContent = bookings.length;
 
-    bookings.sort((a, b) => a.themeId.localeCompare(b.themeId));
-    tbody.innerHTML = bookings.map((b) => {
-      const theme = THEMES.find((t) => t.id === b.themeId);
-      const createdAt = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleString("zh-TW") : "—";
-      const dependents = Array.isArray(b.dependents) ? b.dependents : [];
-      const totalPeople = b.totalPeople || (1 + dependents.length);
-      const dependentNames = dependents.length ? dependents.map((d) => d.name).join("、") : "無";
-      return `
-        <tr>
-          <td>${b.displayName || "—"}</td>
-          <td>${b.email}</td>
-          <td>${theme?.name || b.themeId}</td>
-          <td><strong>${totalPeople} 人</strong><br><span class="table-subtext">眷屬：${dependentNames}</span></td>
-          <td>${createdAt}</td>
-          <td><button class="btn-admin-del" data-uid="${b.uid}" data-theme="${b.themeId}">刪除</button></td>
-        </tr>`;
-    }).join("");
+  if (bookings.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="empty-cell">目前尚無預約資料。</td></tr>`;
+    return;
+  }
 
-    $$(".btn-admin-del").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        if (!confirm(`確定要刪除這筆預約嗎？`)) return;
-        try {
-          await adminDeleteBooking(btn.dataset.uid, btn.dataset.theme);
-          showToast("已刪除預約。");
-          loadAdminList();
-        } catch (err) {
-          showToast("刪除失敗，請稍後再試。", true);
-        }
-      });
+  const sorted = [...bookings].sort((a, b) => String(a.themeId).localeCompare(String(b.themeId)));
+  tbody.innerHTML = sorted.map((b) => {
+    const theme = THEMES.find((t) => t.id === b.themeId);
+    const createdAt = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleString("zh-TW") : "—";
+    const dependents = Array.isArray(b.dependents) ? b.dependents : [];
+    const totalPeople = Number(b.totalPeople) || (1 + dependents.length);
+    const dependentNames = dependents.length ? dependents.map((d) => d.name).join("、") : "無";
+    return `
+      <tr>
+        <td>${b.displayName || "—"}</td>
+        <td>${b.email}</td>
+        <td>${theme?.name || b.themeId}</td>
+        <td><strong>${totalPeople} 人</strong><br><span class="table-subtext">眷屬：${dependentNames}</span></td>
+        <td>${createdAt}</td>
+        <td><button class="btn-admin-del" data-uid="${b.uid}" data-theme="${b.themeId}">刪除</button></td>
+      </tr>`;
+  }).join("");
+
+  $$(".btn-admin-del").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!confirm(`確定要刪除這筆預約嗎？`)) return;
+      try {
+        await adminDeleteBooking(btn.dataset.uid, btn.dataset.theme);
+        await syncCountersFromBookings(THEMES.map((t) => t.id));
+        showToast("已刪除預約。");
+      } catch (err) {
+        showToast("刪除失敗，請稍後再試。", true);
+      }
     });
+  });
+}
+
+async function loadAdminList() {
+  try {
+    latestBookings = await getAllBookings();
+    renderAdminList(latestBookings);
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="6" class="error-cell">載入失敗，請重新整理。</td></tr>`;
+    const tbody = $("#booking-list-body");
+    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="error-cell">載入失敗，請重新整理。</td></tr>`;
     console.error(err);
   }
 }

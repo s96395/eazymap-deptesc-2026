@@ -8,6 +8,7 @@ import {
   logout,
   onAuthChange,
   onBookingCountsChange,
+  onMyBookingChange,
   getMyBooking,
   upsertBooking,
   cancelBooking
@@ -25,6 +26,7 @@ let currentUser = null;
 let myBooking = null;
 let bookingCounts = {};
 let unsubscribeCounts = null;
+let unsubscribeMyBooking = null;
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -35,23 +37,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const nameEl = $("#user-name");
     const logoutBtn = $("#btn-logout");
 
+    if (unsubscribeCounts) unsubscribeCounts();
+    if (unsubscribeMyBooking) unsubscribeMyBooking();
+
+    unsubscribeCounts = onBookingCountsChange((counts) => {
+      bookingCounts = counts;
+      if (currentUser) renderThemeCards();
+    });
+
     if (user) {
       if (nameEl) { nameEl.textContent = user.displayName || user.email; nameEl.classList.remove("hidden"); }
       logoutBtn?.classList.remove("hidden");
-      myBooking = await getMyBooking(user.uid);
-      showMain();
+      unsubscribeMyBooking = onMyBookingChange(user.uid, (booking) => {
+        myBooking = booking;
+        showMain();
+      });
     } else {
       nameEl?.classList.add("hidden");
       logoutBtn?.classList.add("hidden");
       myBooking = null;
       showLogin();
     }
-
-    if (unsubscribeCounts) unsubscribeCounts();
-    unsubscribeCounts = onBookingCountsChange((counts) => {
-      bookingCounts = counts;
-      if (currentUser) renderThemeCards();
-    });
   });
 
   $("#btn-login")?.addEventListener("click", loginWithGoogle);

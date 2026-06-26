@@ -21,7 +21,8 @@ import {
   getDocs,
   onSnapshot,
   runTransaction,
-  serverTimestamp
+  serverTimestamp,
+  writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
@@ -55,14 +56,48 @@ function onAuthChange(callback) {
  * @param {function} callback - 收到 { themeId: count } 物件
  */
 function onBookingCountsChange(callback) {
+  // 顯示名額以 bookings 為主，避免 counters 與名單不同步時畫面誤判。
   return onSnapshot(collection(db, "bookings"), (snapshot) => {
     const counts = {};
     snapshot.forEach((d) => {
       const data = d.data();
-      counts[data.themeId] = (counts[data.themeId] || 0) + (data.totalPeople || 1);
+      if (!data.themeId) return;
+      const totalPeople = Number(data.totalPeople) || (Array.isArray(data.dependents) ? 1 + data.dependents.length : 1);
+      counts[data.themeId] = (counts[data.themeId] || 0) + totalPeople;
     });
     callback(counts);
   });
+}
+
+function onMyBookingChange(uid, callback) {
+  return onSnapshot(doc(db, "bookings", uid), (snap) => {
+    callback(snap.exists() ? snap.data() : null);
+  });
+}
+
+function onAllBookingsChange(callback) {
+  return onSnapshot(collection(db, "bookings"), (snapshot) => {
+    callback(snapshot.docs.map((d) => d.data()));
+  });
+}
+
+async function syncCountersFromBookings(themeIds = []) {
+  const snap = await getDocs(collection(db, "bookings"));
+  const counts = {};
+  themeIds.forEach((id) => { counts[id] = 0; });
+  snap.forEach((d) => {
+    const data = d.data();
+    if (!data.themeId) return;
+    const totalPeople = Number(data.totalPeople) || (Array.isArray(data.dependents) ? 1 + data.dependents.length : 1);
+    counts[data.themeId] = (counts[data.themeId] || 0) + totalPeople;
+  });
+
+  const batch = writeBatch(db);
+  Object.entries(counts).forEach(([themeId, count]) => {
+    batch.set(doc(db, "counters", themeId), { count });
+  });
+  await batch.commit();
+  return counts;
 }
 
 // ---- 使用者預約 ----
@@ -163,6 +198,9 @@ export {
   logout,
   onAuthChange,
   onBookingCountsChange,
+  onMyBookingChange,
+  onAllBookingsChange,
+  syncCountersFromBookings,
   getMyBooking,
   upsertBooking,
   cancelBooking,
