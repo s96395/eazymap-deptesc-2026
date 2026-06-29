@@ -15,11 +15,51 @@ import {
 } from "./firebase-db.js";
 
 const THEMES = [
-  { id: "butterfly-valley",  name: "蝴蝶谷",           capacity: 5,  url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb05", desc: "2–5 人" },
-  { id: "death-attic",       name: "死神的閣樓",         capacity: 7,  url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb02", desc: "4–7 人" },
-  { id: "forsaken-girl",     name: "被神遺棄的女孩",     capacity: 10, url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb06", desc: "4–10 人" },
-  { id: "diesel-street",     name: "迪賽爾街 19 號",     capacity: 5,  url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb07", desc: "2–5 人" },
-  { id: "dark-alley",        name: "暗巷（事件 2－執念）", capacity: 8, url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb08", desc: "4–8 人" }
+  {
+    id: "butterfly-valley",
+    name: "蝴蝶谷",
+    capacity: 5,
+    url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb05",
+    desc: "2–5 人",
+    horror: "🦋 恐怖指數：☆☆☆☆☆（全店最溫馨）",
+    scare: "完全零恐怖！主題是生物學家到森林深處尋找稀有蝴蝶的野外探險。場景主打全機關、無鎖頭，風格非常自然、舒適、明亮，是店內最溫馨且適合新手的 40 分鐘輕度體驗。"
+  },
+  {
+    id: "death-attic",
+    name: "死神的閣樓",
+    capacity: 7,
+    url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb02",
+    desc: "4–7 人",
+    horror: "🏚️ 恐怖指數：★★★☆☆",
+    scare: "黑暗、詭譎的歐式閣樓氣氛。其主要壓力來自於第一視角空間，需要大量攀爬、爬高爬低，如果是怕黑、怕幽閉空間或是有懼高症的玩家會感到心理壓力。"
+  },
+  {
+    id: "forsaken-girl",
+    name: "被神遺棄的女孩",
+    capacity: 10,
+    url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb06",
+    desc: "4–10 人",
+    horror: "👻 恐怖指數：★★★★☆",
+    scare: "校園失蹤案背景的靈異驚悚風。包含許多突發驚嚇（Jump Scare）與靈異機關互動，怕黑或討厭突然發出巨響的人很容易崩潰。"
+  },
+  {
+    id: "diesel-street",
+    name: "迪賽爾街 19 號",
+    capacity: 5,
+    url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb07",
+    desc: "2–5 人",
+    horror: "🔍 恐怖指數：☆☆☆☆☆（零恐怖）",
+    scare: "完全不恐怖的懸疑推理解謎主題。故事是調查一樁妻子在服飾店神祕失蹤的案件，風格類似福爾摩斯辦案，場景偏向英倫街道，只有純粹動腦的解謎快感。"
+  },
+  {
+    id: "dark-alley",
+    name: "暗巷（事件 2－執念）",
+    capacity: 8,
+    url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb08",
+    desc: "4–8 人",
+    horror: "☠️ 恐怖指數：★★★★★",
+    scare: "極度逼真的廢棄巷弄布景，空間壓迫感極強。主打重度驚悚、幽暗燈光與令人發毛的音效營造，是店內公認最恐怖的經典主題。現已拆分為束縛、執念、驟變、阻咒等不同事件副本。"
+  }
 ];
 
 let currentUser = null;
@@ -149,6 +189,10 @@ function renderThemeCards() {
         </div>
         <div class="card-body">
           <a href="${t.url}" target="_blank" rel="noopener" class="card-link">查看主題介紹 →</a>
+          <div class="section-note">
+            <strong>${t.horror}</strong>
+            <p>驚嚇特點：${t.scare}</p>
+          </div>
           <div class="card-capacity">
             <div class="cap-bar-wrap">
               <div class="cap-bar ${full ? "bar-full" : remaining <= 2 ? "bar-low" : "bar-ok"}" style="width:${pct}%"></div>
