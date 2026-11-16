@@ -3,316 +3,376 @@
 // ======================================================
 
 import {
-  auth,
+  normEmail,
   loginWithGoogle,
   logout,
   onAuthChange,
-  onBookingCountsChange,
-  onMyBookingChange,
-  getMyBooking,
-  upsertBooking,
-  cancelBooking
+  onGroupsChange,
+  onJoinsChange,
+  onMyAbsenceChange,
+  addMember,
+  removeMember,
+  setTeamName,
+  updateMyDisplayName,
+  reportAbsence,
+  withdrawAbsence
 } from "./firebase-db.js";
-
-const THEMES = [
-  {
-    id: "butterfly-valley",
-    name: "蝴蝶谷",
-    capacity: 5,
-    url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb05",
-    desc: "2–5 人",
-    horror: "🦋 恐怖指數：☆☆☆☆☆（全店最溫馨）",
-    scare: "完全零恐怖！主題是生物學家到森林深處尋找稀有蝴蝶的野外探險。場景主打全機關、無鎖頭，風格非常自然、舒適、明亮，是店內最溫馨且適合新手的 40 分鐘輕度體驗。"
-  },
-  {
-    id: "death-attic",
-    name: "死神的閣樓",
-    capacity: 7,
-    url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb02",
-    desc: "4–7 人",
-    horror: "🏚️ 恐怖指數：★★★☆☆",
-    scare: "黑暗、詭譎的歐式閣樓氣氛。其主要壓力來自於第一視角空間，需要大量攀爬、爬高爬低，如果是怕黑、怕幽閉空間或是有懼高症的玩家會感到心理壓力。"
-  },
-  {
-    id: "forsaken-girl",
-    name: "被神遺棄的女孩",
-    capacity: 10,
-    url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb06",
-    desc: "4–10 人",
-    horror: "👻 恐怖指數：★★★★☆",
-    scare: "校園失蹤案背景的靈異驚悚風。包含許多突發驚嚇（Jump Scare）與靈異機關互動，怕黑或討厭突然發出巨響的人很容易崩潰。"
-  },
-  {
-    id: "diesel-street",
-    name: "迪賽爾街 19 號",
-    capacity: 5,
-    url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb07",
-    desc: "2–5 人",
-    horror: "🔍 恐怖指數：☆☆☆☆☆（零恐怖）",
-    scare: "完全不恐怖的懸疑推理解謎主題。故事是調查一樁妻子在服飾店神祕失蹤的案件，風格類似福爾摩斯辦案，場景偏向英倫街道，只有純粹動腦的解謎快感。"
-  },
-  {
-    id: "dark-alley",
-    name: "暗巷（事件 2－執念）",
-    capacity: 8,
-    url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb08",
-    desc: "4–8 人",
-    horror: "☠️ 恐怖指數：★★★★★",
-    scare: "極度逼真的廢棄巷弄布景，空間壓迫感極強。主打重度驚悚、幽暗燈光與令人發毛的音效營造，是店內公認最恐怖的經典主題。現已拆分為束縛、執念、驟變、阻咒等不同事件副本。"
-  }
-];
+import {
+  EVENT, GROUP_CAPACITY, GROUPS, AGENDA, BRING_ITEMS, PROVIDED_ITEMS, ABSENCE_REASONS, EMAIL_DOMAIN
+} from "./event-config.js";
 
 let currentUser = null;
-let myBooking = null;
-let bookingCounts = {};
-let unsubscribeCounts = null;
-let unsubscribeMyBooking = null;
+let myEmail = "";
+let groupData = {};
+let joins = [];
+let myAbsence = null;
+let unsubscribers = [];
+let busy = false;
+let nameSynced = false;
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const accountOf = (email) => String(email || "").split("@")[0];
 
 document.addEventListener("DOMContentLoaded", () => {
-  onAuthChange(async (user) => {
+  renderEventInfo();
+
+  onAuthChange((user) => {
     currentUser = user;
+    myEmail = user ? normEmail(user.email) : "";
+    nameSynced = false;
+    unsubscribers.forEach((fn) => fn());
+    unsubscribers = [];
+
     const nameEl = $("#user-name");
     const logoutBtn = $("#btn-logout");
 
-    if (unsubscribeCounts) { unsubscribeCounts(); unsubscribeCounts = null; }
-    if (unsubscribeMyBooking) { unsubscribeMyBooking(); unsubscribeMyBooking = null; }
-
     if (user) {
-      unsubscribeCounts = onBookingCountsChange((counts) => {
-        bookingCounts = counts;
-        renderThemeCards();
-      });
-      if (nameEl) { nameEl.textContent = user.displayName || user.email; nameEl.classList.remove("hidden"); }
-      logoutBtn?.classList.remove("hidden");
-      unsubscribeMyBooking = onMyBookingChange(user.uid, (booking) => {
-        myBooking = booking;
-        showMain();
-      });
+      nameEl.textContent = user.displayName || user.email;
+      nameEl.classList.remove("hidden");
+      logoutBtn.classList.remove("hidden");
+      $("#section-login").classList.add("hidden");
+      $("#section-main").classList.remove("hidden");
+      $("#domain-warning").classList.toggle("hidden", myEmail.endsWith(`@${EMAIL_DOMAIN}`));
+
+      unsubscribers.push(
+        onGroupsChange((data) => { groupData = data; render(); }),
+        onJoinsChange((list) => { joins = list; render(); syncMyName(); }),
+        onMyAbsenceChange(myEmail, (absence) => { myAbsence = absence; render(); })
+      );
     } else {
-      nameEl?.classList.add("hidden");
-      logoutBtn?.classList.add("hidden");
-      bookingCounts = {};
-      myBooking = null;
-      showLogin();
+      groupData = {};
+      joins = [];
+      myAbsence = null;
+      nameEl.classList.add("hidden");
+      logoutBtn.classList.add("hidden");
+      $("#section-login").classList.remove("hidden");
+      $("#section-main").classList.add("hidden");
     }
   });
 
-  $("#btn-login")?.addEventListener("click", loginWithGoogle);
-  $("#btn-logout")?.addEventListener("click", logout);
-  $("#btn-add-dependent")?.addEventListener("click", addDependentRow);
+  $("#btn-login").addEventListener("click", loginWithGoogle);
+  $("#btn-logout").addEventListener("click", logout);
+  $("#absence-form").addEventListener("submit", handleAbsenceSubmit);
+  $("#btn-absence-cancel").addEventListener("click", () => toggleAbsenceForm(false));
 });
 
-function showLogin() {
-  $("#section-login")?.classList.remove("hidden");
-  $("#section-main")?.classList.add("hidden");
+// ---- 活動資訊 ----
+
+function renderEventInfo() {
+  $("#event-name").textContent = EVENT.name;
+  $("#event-slogan").textContent = EVENT.slogan;
+  $("#event-date").textContent = EVENT.date;
+  $("#event-time").textContent = EVENT.time;
+  $("#event-place").textContent = EVENT.place;
+  $$(".group-cap").forEach((el) => { el.textContent = GROUP_CAPACITY; });
+  $$(".reply-deadline").forEach((el) => { el.textContent = EVENT.replyDeadline; });
+  $$(".email-domain").forEach((el) => { el.textContent = `@${EMAIL_DOMAIN}`; });
+
+  $("#agenda").innerHTML = AGENDA.map((a) => `
+    <li><strong>${esc(a.title)}</strong>${a.note ? `<span>${esc(a.note)}</span>` : ""}</li>`).join("");
+  $("#bring-items").innerHTML = BRING_ITEMS.map((i) => `<li>${esc(i)}</li>`).join("");
+  $("#provided-items").innerHTML = PROVIDED_ITEMS.map((i) => `<li>${esc(i)}</li>`).join("");
+  $("#absence-type").innerHTML = ABSENCE_REASONS.map((r) => `<option value="${esc(r)}">${esc(r)}</option>`).join("");
 }
 
-function showMain() {
-  $("#section-login")?.classList.add("hidden");
-  $("#section-main")?.classList.remove("hidden");
-  renderThemeCards();
-  renderMyBooking();
-  updatePartySize();
+// ---- 畫面 ----
+
+function myJoin() {
+  return joins.find((j) => j.email === myEmail) || null;
 }
 
-function getCount(id) { return bookingCounts[id] || 0; }
-function getRemaining(t) { return t.capacity - getCount(t.id); }
-function getPartySize() { return 1 + $$(".dependent-row").length; }
+/** 被隊長代報的人，名單上原本只有帳號，本人登入後換成真實姓名 */
+async function syncMyName() {
+  const join = myJoin();
+  if (nameSynced || !join || !currentUser?.displayName) return;
+  nameSynced = true;
+  if (join.displayName === currentUser.displayName) return;
+  try { await updateMyDisplayName(currentUser); } catch (err) { console.error(err); }
+}
 
-function addDependentRow() {
-  if (myBooking) {
-    showToast("你已經完成預約，如需調整眷屬請先取消預約再重新報名。", true);
+function render() {
+  if (!currentUser) return;
+  renderStatus();
+  renderGroups();
+}
+
+function renderStatus() {
+  const el = $("#my-status");
+  const join = myJoin();
+
+  if (join) {
+    const group = GROUPS.find((g) => g.id === join.groupId);
+    const teamName = groupData[join.groupId]?.teamName;
+    const byOther = join.addedBy && join.addedBy !== myEmail;
+    el.className = "card status-card status-joined";
+    el.innerHTML = `
+      <div>
+        <p class="status-label">我的狀態</p>
+        <p class="status-main">已加入 <strong>${esc(group?.name || join.groupId)}</strong>${teamName ? `「${esc(teamName)}」` : ""}</p>
+        <p class="muted">${byOther ? `由 ${esc(join.addedByName || accountOf(join.addedBy))} 幫你報名。` : ""}當天記得帶筆、野餐墊和想吃的東西。</p>
+      </div>
+      <div class="status-actions">
+        <button id="btn-leave" class="btn-outline">退出這組</button>
+      </div>`;
+    $("#btn-leave").addEventListener("click", () => handleRemove(myEmail, true));
+    toggleAbsenceForm(false);
     return;
   }
-  const list = $("#dependents-list");
-  if (!list) return;
 
-  const row = document.createElement("div");
-  row.className = "dependent-row";
-  row.innerHTML = `
-    <div class="dependent-info">
-      <label>眷屬姓名</label>
-      <input class="dependent-name" type="text" placeholder="請輸入眷屬姓名" autocomplete="off" />
+  if (myAbsence) {
+    el.className = "card status-card status-absent";
+    el.innerHTML = `
+      <div>
+        <p class="status-label">我的狀態</p>
+        <p class="status-main">已回報不能參加</p>
+        <p class="muted">原因：${esc(myAbsence.reasonType)}${myAbsence.reasonNote ? `（${esc(myAbsence.reasonNote)}）` : ""}</p>
+      </div>
+      <div class="status-actions">
+        <button id="btn-edit-absence" class="btn-outline">修改原因</button>
+        <button id="btn-withdraw" class="btn-primary">改成可以參加</button>
+      </div>`;
+    $("#btn-edit-absence").addEventListener("click", () => toggleAbsenceForm(true));
+    $("#btn-withdraw").addEventListener("click", handleWithdraw);
+    return;
+  }
+
+  el.className = "card status-card";
+  el.innerHTML = `
+    <div>
+      <p class="status-label">我的狀態</p>
+      <p class="status-main">還沒選組</p>
+      <p class="muted">請從下方挑一組加入。當天不能來的話，請在 ${esc(EVENT.replyDeadline)}前回報。</p>
     </div>
-    <button type="button" class="btn-remove-dependent">移除</button>
-  `;
-  row.querySelector(".btn-remove-dependent").addEventListener("click", () => {
-    row.remove();
-    updatePartySize();
-    renderThemeCards();
-  });
-  row.querySelector(".dependent-name").addEventListener("input", () => renderThemeCards());
-  list.appendChild(row);
-  updatePartySize();
-  renderThemeCards();
+    <div class="status-actions">
+      <button id="btn-open-absence" class="btn-outline">我不能參加</button>
+    </div>`;
+  $("#btn-open-absence").addEventListener("click", () => toggleAbsenceForm(true));
 }
 
-function getDependents() {
-  return Array.from($$(".dependent-name"))
-    .map((input) => input.value.trim())
-    .filter(Boolean)
-    .map((name) => ({ name }));
-}
+function renderGroups() {
+  const container = $("#group-cards");
+  const join = myJoin();
 
-function updatePartySize() {
-  const el = $("#party-size");
-  if (el) el.textContent = getPartySize();
-}
+  // 重畫前記住輸入框內容，避免別人報名時打到一半的字被清掉
+  const drafts = {};
+  $$(".group-card input").forEach((input) => { drafts[input.name] = input.value; });
+  const focusedName = document.activeElement?.closest?.(".group-card") ? document.activeElement.name : null;
 
-function setPartyPanelDisabled(disabled) {
-  const panel = $("#party-panel");
-  panel?.classList.toggle("is-disabled", disabled);
-  $("#btn-add-dependent")?.toggleAttribute("disabled", disabled);
-  $$(".dependent-name, .btn-remove-dependent").forEach((el) => el.toggleAttribute("disabled", disabled));
-}
+  container.innerHTML = GROUPS.map((g) => {
+    const members = joins
+      .filter((j) => j.groupId === g.id)
+      .sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
+    const count = groupData[g.id]?.count ?? members.length;
+    const teamName = groupData[g.id]?.teamName || "";
+    const remaining = Math.max(0, GROUP_CAPACITY - count);
+    const isMine = join?.groupId === g.id;
+    const full = remaining === 0;
 
-function renderThemeCards() {
-  const container = $("#theme-cards");
-  if (!container) return;
-  const partySize = getPartySize();
-  container.innerHTML = THEMES.map((t) => {
-    const remaining = getRemaining(t);
-    const full = remaining <= 0;
-    const isBooked = myBooking?.themeId === t.id;
-    const lockedByOtherBooking = !!myBooking && !isBooked;
-    const notEnough = !isBooked && remaining < partySize;
-    const pct = Math.min((getCount(t.id) / t.capacity) * 100, 100);
+    // 已經有組的人，其他組卡片就不放按鈕，畫面比較乾淨
+    let action = "";
+    if (join) action = "";
+    else if (myAbsence) action = `<span class="badge">已回報不能參加</span>`;
+    else if (full) action = `<span class="badge badge-full">已額滿</span>`;
+    else action = `<button class="btn-primary btn-join" data-group="${g.id}">加入這組</button>`;
+
+    const slots = Array.from({ length: GROUP_CAPACITY }, (_, i) =>
+      `<span class="slot ${i < count ? "slot-filled" : ""}"></span>`).join("");
+
+    const memberItems = members.length
+      ? members.map((m) => {
+          const isMe = m.email === myEmail;
+          const canRemove = isMine && !isMe && m.addedBy === myEmail;
+          return `
+            <li>
+              <span>${esc(m.displayName || accountOf(m.email))}${isMe ? `<em class="me-tag">我</em>` : ""}</span>
+              ${canRemove ? `<button class="btn-text btn-remove" data-email="${esc(m.email)}">移除</button>` : ""}
+            </li>`;
+        }).join("")
+      : `<li class="muted">還沒有人</li>`;
+
+    const mineTools = isMine ? `
+      <form class="inline-form team-name-form" data-group="${g.id}">
+        <label>隊名</label>
+        <div class="inline-row">
+          <input name="team-${g.id}" type="text" maxlength="20" placeholder="20 字以內" value="${esc(teamName)}" />
+          <button type="submit" class="btn-outline">${teamName ? "修改" : "儲存"}</button>
+        </div>
+      </form>
+      ${full ? `<p class="muted small">這組已經滿了。</p>` : `
+      <form class="inline-form add-member-form" data-group="${g.id}">
+        <label>幫隊友報名（還有 ${remaining} 個位子）</label>
+        <div class="inline-row">
+          <div class="email-input">
+            <input name="add-${g.id}" type="text" placeholder="帳號" autocomplete="off" autocapitalize="off" spellcheck="false" />
+            <span class="email-domain">@${esc(EMAIL_DOMAIN)}</span>
+          </div>
+          <button type="submit" class="btn-primary">加入</button>
+        </div>
+      </form>`}` : "";
 
     return `
-      <div class="theme-card ${full && !isBooked ? "card-full" : ""} ${isBooked ? "card-selected" : ""} ${notEnough ? "card-limited" : ""}">
-        <div class="card-header">
-          <h3 class="card-title">${t.name}</h3>
-          <span class="card-range">${t.desc}</span>
+      <div class="card group-card ${isMine ? "group-mine" : ""} ${full && !isMine ? "group-full" : ""}">
+        <div class="group-head">
+          <h3>${esc(g.name)}${isMine ? `<span class="badge badge-mine">我的組</span>` : ""}</h3>
+          <span class="group-count">${count} / ${GROUP_CAPACITY}</span>
         </div>
-        <div class="card-body">
-          <a href="${t.url}" target="_blank" rel="noopener" class="card-link">查看主題介紹 →</a>
-          <div class="section-note">
-            <strong>${t.horror}</strong>
-            <p>驚嚇特點：${t.scare}</p>
-          </div>
-          <div class="card-capacity">
-            <div class="cap-bar-wrap">
-              <div class="cap-bar ${full ? "bar-full" : remaining <= 2 ? "bar-low" : "bar-ok"}" style="width:${pct}%"></div>
-            </div>
-            <span class="cap-text">${full ? "額滿" : `剩餘 ${remaining} 位`}</span>
-          </div>
-          ${notEnough ? `<p class="capacity-warning">目前選擇 ${partySize} 人，剩餘名額不足。</p>` : ""}
-        </div>
-        <div class="card-footer">
-          ${isBooked
-            ? `<span class="badge-booked">✓ 已鎖定此主題</span>`
-            : lockedByOtherBooking
-            ? `<span class="badge-full-sm">已完成預約，請先取消才能更改</span>`
-            : full
-            ? `<span class="badge-full-sm">額滿</span>`
-            : notEnough
-            ? `<span class="badge-full-sm">名額不足</span>`
-            : `<button class="btn-select" data-theme="${t.id}" data-cap="${t.capacity}">選擇此主題</button>`}
-        </div>
+        <p class="team-name ${teamName ? "" : "team-name-empty"}">${teamName ? esc(teamName) : "還沒取隊名"}</p>
+        <div class="slots" aria-hidden="true">${slots}</div>
+        <ul class="member-list">${memberItems}</ul>
+        ${mineTools}
+        ${action ? `<div class="group-foot">${action}</div>` : ""}
       </div>`;
   }).join("");
 
-  $$(".btn-select").forEach((btn) => {
-    btn.addEventListener("click", () => handleBook(btn.dataset.theme, parseInt(btn.dataset.cap, 10)));
+  // 還原輸入中的內容
+  $$(".group-card input").forEach((input) => {
+    if (input.name in drafts) input.value = drafts[input.name];
   });
+  if (focusedName) container.querySelector(`input[name="${focusedName}"]`)?.focus();
+
+  $$(".btn-join").forEach((btn) => btn.addEventListener("click", () => handleJoin(btn.dataset.group, btn)));
+  $$(".btn-remove").forEach((btn) => btn.addEventListener("click", () => handleRemove(btn.dataset.email, false)));
+  $$(".team-name-form").forEach((form) => form.addEventListener("submit", handleTeamName));
+  $$(".add-member-form").forEach((form) => form.addEventListener("submit", handleAddMember));
 }
 
-function renderMyBooking() {
-  const el = $("#my-booking");
-  if (!el) return;
-  setPartyPanelDisabled(!!myBooking);
-
-  if (!myBooking) {
-    el.innerHTML = `<p class="no-booking">尚未選擇主題，請先設定報名人數，再從下方選一個你想玩的密室。</p>`;
-    return;
+function toggleAbsenceForm(show) {
+  const wrap = $("#absence-form-wrap");
+  wrap.classList.toggle("hidden", !show);
+  if (show) {
+    $("#absence-type").value = myAbsence?.reasonType || ABSENCE_REASONS[0];
+    $("#absence-note").value = myAbsence?.reasonNote || "";
+    wrap.scrollIntoView({ behavior: "smooth", block: "center" });
   }
-
-  const theme = THEMES.find((t) => t.id === myBooking.themeId);
-  const dependents = Array.isArray(myBooking.dependents) ? myBooking.dependents : [];
-  const totalPeople = myBooking.totalPeople || (1 + dependents.length);
-  const dependentText = dependents.length
-    ? `<p class="family-notice">同行眷屬：${dependents.map((d) => d.name).join("、")}</p>`
-    : `<p class="family-notice">本次未登記同行眷屬。</p>`;
-
-  el.innerHTML = `
-    <div class="booking-status">
-      <div class="booking-info">
-        <span class="booking-label">你目前選擇的主題：</span>
-        <strong class="booking-theme">${theme?.name || myBooking.themeId}</strong>
-        <span class="booking-people">共 ${totalPeople} 人</span>
-      </div>
-      <button id="btn-cancel" class="btn-cancel">取消預約</button>
-    </div>
-    ${dependentText}
-    <p class="family-notice">⚠️ 若要調整眷屬或人數，請先取消預約後重新報名。</p>`;
-  $("#btn-cancel")?.addEventListener("click", handleCancel);
 }
 
-async function handleBook(themeId, capacity) {
-  if (!currentUser) return;
+// ---- 動作 ----
 
-  // 已完成預約後一律鎖定，避免手滑改到其他主題或把眷屬人數洗掉。
-  myBooking = await getMyBooking(currentUser.uid);
-  if (myBooking) {
-    showToast("你已完成預約，如需更改主題或人數，請先取消目前預約。", true);
-    renderMyBooking();
-    renderThemeCards();
-    return;
-  }
+const ERROR_TEXT = {
+  FULL: "這組剛好額滿了，請選別組。",
+  ALREADY_JOINED: "你已經在其他組了，想換組請先退出目前的組。",
+  MARKED_ABSENT: "你已回報不能參加，要選組請先按「改成可以參加」。",
+  NOT_READY: "組別還沒開放，請稍後再試或聯絡福委。",
+  MEMBER_TAKEN: "這位同仁已經在其他組了。",
+  PROXY_DENIED: "沒辦法幫這位同仁報名，可能對方已回報不能參加，請先跟對方確認。"
+};
 
-  const rows = $$(".dependent-row");
-  const dependents = getDependents();
-  if (dependents.length !== rows.length) {
-    showToast("請填寫每一位眷屬姓名，或先移除空白欄位。", true);
-    return;
-  }
-
-  const totalPeople = 1 + dependents.length;
-  const btn = $(`.btn-select[data-theme="${themeId}"]`);
-  if (btn) { btn.disabled = true; btn.textContent = "處理中…"; }
-
+async function run(task, okMsg, failMsg) {
+  if (busy || !currentUser) return false;
+  busy = true;
   try {
-    await upsertBooking(
-      { uid: currentUser.uid, email: currentUser.email, displayName: currentUser.displayName },
-      themeId,
-      capacity,
-      { dependents, totalPeople }
-    );
-    myBooking = await getMyBooking(currentUser.uid);
-    renderMyBooking();
-    renderThemeCards();
-    showToast("預約成功！");
+    await task();
+    if (okMsg) showToast(okMsg);
+    return true;
   } catch (err) {
-    const message = err.message === "FULL"
-      ? "此主題名額不足，請調整人數或選擇其他主題。"
-      : err.message === "ALREADY_BOOKED"
-      ? "你已完成預約，如需更改主題或人數，請先取消目前預約。"
-      : "預約失敗，請稍後再試。";
-    showToast(message, true);
-    if (btn) { btn.disabled = false; btn.textContent = "選擇此主題"; }
+    console.error(err);
+    showToast(ERROR_TEXT[err.message] || failMsg, true);
+    return false;
+  } finally {
+    busy = false;
   }
 }
 
-async function handleCancel() {
-  if (!myBooking || !currentUser) return;
-  if (!confirm("確定要取消預約嗎？")) return;
-  try {
-    await cancelBooking(currentUser.uid);
-    myBooking = null;
-    renderMyBooking();
-    renderThemeCards();
-    showToast("已取消預約。");
-  } catch (err) {
-    showToast("取消失敗，請稍後再試。", true);
+async function handleJoin(groupId, btn) {
+  btn.disabled = true;
+  btn.textContent = "處理中…";
+  const groupName = GROUPS.find((g) => g.id === groupId)?.name || "";
+  const ok = await run(() => addMember(currentUser, { email: myEmail }, groupId, GROUP_CAPACITY),
+    `已加入${groupName}！`, "加入失敗，請稍後再試。");
+  if (!ok) { btn.disabled = false; btn.textContent = "加入這組"; }
+}
+
+async function handleAddMember(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const input = form.querySelector("input");
+  // 不小心貼上完整信箱也沒關係，只取 @ 前面
+  const account = accountOf(input.value.trim().toLowerCase());
+  if (!/^[a-z0-9._-]+$/.test(account)) {
+    showToast("帳號格式不對，只要輸入信箱 @ 前面的部分。", true);
+    return;
   }
+  const email = `${account}@${EMAIL_DOMAIN}`;
+  if (email === myEmail) {
+    showToast("你已經在這組了。", true);
+    return;
+  }
+  const existing = joins.find((j) => j.email === email);
+  if (existing) {
+    const g = GROUPS.find((x) => x.id === existing.groupId);
+    showToast(`${account} 已經在${g?.name || "其他組"}了。`, true);
+    return;
+  }
+
+  const ok = await run(async () => {
+    try {
+      await addMember(currentUser, { email }, form.dataset.group, GROUP_CAPACITY);
+    } catch (err) {
+      if (err.code === "permission-denied") throw new Error("PROXY_DENIED");
+      throw err;
+    }
+  }, `已幫 ${account} 報名！`, "報名失敗，請稍後再試。");
+
+  if (ok) input.value = "";
+}
+
+async function handleRemove(email, isSelf) {
+  const text = isSelf ? "確定要退出這組嗎？名額會釋出給其他人。" : `確定要把 ${accountOf(email)} 移出這組嗎？`;
+  if (!confirm(text)) return;
+  await run(() => removeMember(email), isSelf ? "已退出組別。" : "已移除。", "操作失敗，請稍後再試。");
+}
+
+async function handleTeamName(e) {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const name = form.querySelector("input").value.trim().slice(0, 20);
+  if (!name) {
+    showToast("隊名不能空白。", true);
+    return;
+  }
+  await run(() => setTeamName(currentUser, form.dataset.group, name), "隊名已更新！", "隊名更新失敗，請稍後再試。");
+}
+
+async function handleAbsenceSubmit(e) {
+  e.preventDefault();
+  const reasonType = $("#absence-type").value;
+  const reasonNote = $("#absence-note").value.trim().slice(0, 200);
+  if (reasonType === "其他" && !reasonNote) {
+    showToast("選「其他」的話，請簡單寫一下原因。", true);
+    return;
+  }
+  const ok = await run(() => reportAbsence(currentUser, reasonType, reasonNote), "已送出，謝謝你的回覆。", "送出失敗，請稍後再試。");
+  if (ok) toggleAbsenceForm(false);
+}
+
+async function handleWithdraw() {
+  await run(() => withdrawAbsence(myEmail), "已撤回，請記得選一組。", "撤回失敗，請稍後再試。");
 }
 
 function showToast(msg, isError = false) {
-  const existing = $("#toast");
-  if (existing) existing.remove();
+  $("#toast")?.remove();
   const toast = document.createElement("div");
   toast.id = "toast";
   toast.className = `toast ${isError ? "toast-error" : "toast-success"}`;
