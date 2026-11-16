@@ -110,6 +110,8 @@ service cloud.firestore {
         validGroup(request.resource.data.groupId) &&
         (email == myEmail() || isMemberOf(request.resource.data.groupId)) &&
         !exists(absencePath(email)) &&
+        // 每次只能加一個人：組別的 lastChange 必須是這筆資料本身
+        getAfter(groupPath(request.resource.data.groupId)).data.lastChange == email &&
         getAfter(groupPath(request.resource.data.groupId)).data.count ==
           get(groupPath(request.resource.data.groupId)).data.count + 1;
 
@@ -124,6 +126,7 @@ service cloud.firestore {
       allow delete: if isSignedIn() && (
         isAdmin() ||
         ((email == myEmail() || resource.data.addedBy == myEmail()) &&
+          getAfter(groupPath(resource.data.groupId)).data.lastChange == email &&
           getAfter(groupPath(resource.data.groupId)).data.count ==
             get(groupPath(resource.data.groupId)).data.count - 1)
       );
@@ -134,6 +137,7 @@ service cloud.firestore {
     match /picnicAbsences/{email} {
       allow read: if isSignedIn() && (email == myEmail() || isAdmin());
       allow create, update: if isSignedIn() && email == myEmail() &&
+        companyEmail(email) &&
         request.resource.data.keys().hasOnly(['email', 'displayName', 'reasonType', 'reasonNote', 'createdAt', 'updatedAt']) &&
         request.resource.data.email == email &&
         request.resource.data.displayName is string &&
