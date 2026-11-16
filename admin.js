@@ -3,208 +3,210 @@
 // ======================================================
 
 import {
-  auth,
+  normEmail,
   loginWithGoogle,
   logout,
   onAuthChange,
-  onBookingCountsChange,
-  onAllBookingsChange,
-  getAllBookings,
-  adminDeleteBooking
+  onGroupsChange,
+  onJoinsChange,
+  onAllAbsencesChange,
+  removeMember,
+  withdrawAbsence,
+  rebuildGroupCounts
 } from "./firebase-db.js";
+import { EVENT, GROUP_CAPACITY, GROUPS, ADMIN_EMAILS } from "./event-config.js";
 
-const THEMES = [
-  { id: "butterfly-valley",  name: "蝴蝶谷",           capacity: 5,  url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb05", desc: "2–5 人" },
-  { id: "death-attic",       name: "死神的閣樓",         capacity: 7,  url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb02", desc: "4–7 人" },
-  { id: "forsaken-girl",     name: "被神遺棄的女孩",     capacity: 10, url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb06", desc: "4–10 人" },
-  { id: "diesel-street",     name: "迪賽爾街 19 號",     capacity: 5,  url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb07", desc: "2–5 人" },
-  { id: "dark-alley",        name: "暗巷（事件 2－執念）", capacity: 8, url: "http://henan.lost-taiwan.com.tw/henan/?level=tchb08", desc: "4–8 人" }
-];
-
-const ADMIN_EMAILS = [
-  "yoyoshen@gis.fcu.edu.tw",
-  "irishuang@gis.fcu.edu.tw",
-  "clarachou@gis.fcu.edu.tw"
-];
-
-let bookingCounts = {};
-let unsubscribeCounts = null;
-let unsubscribeBookings = null;
-let latestBookings = [];
+let groupData = {};
+let joins = [];
+let absences = [];
+let unsubscribers = [];
 
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const accountOf = (email) => String(email || "").split("@")[0];
+const fmtTime = (ts) => (ts?.toDate ? ts.toDate().toLocaleString("zh-TW", { hour12: false }) : "");
+const byTime = (a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0);
 
 document.addEventListener("DOMContentLoaded", () => {
+  $("#admin-event").textContent = `${EVENT.name}｜${EVENT.date} ${EVENT.time}`;
+  $$(".group-cap").forEach((el) => { el.textContent = GROUP_CAPACITY; });
+
   onAuthChange((user) => {
+    unsubscribers.forEach((fn) => fn());
+    unsubscribers = [];
+    groupData = {}; joins = []; absences = [];
+
     const nameEl = $("#user-name");
     const logoutBtn = $("#btn-logout");
+    const show = (id) => ["#section-login", "#section-denied", "#section-admin"]
+      .forEach((s) => $(s).classList.toggle("hidden", s !== id));
 
-    if (user) {
-      if (nameEl) { nameEl.textContent = user.displayName || user.email; nameEl.classList.remove("hidden"); }
-      logoutBtn?.classList.remove("hidden");
-
-      if (ADMIN_EMAILS.includes(user.email)) {
-        $("#section-login")?.classList.add("hidden");
-        $("#section-denied")?.classList.add("hidden");
-        $("#section-admin")?.classList.remove("hidden");
-
-        if (unsubscribeCounts) unsubscribeCounts();
-        if (unsubscribeBookings) unsubscribeBookings();
-
-        unsubscribeCounts = onBookingCountsChange((counts) => {
-          bookingCounts = counts;
-          renderAdminOverview();
-        });
-        unsubscribeBookings = onAllBookingsChange((bookings) => {
-          latestBookings = bookings;
-          renderAdminList(bookings);
-        });
-      } else {
-        if (unsubscribeCounts) { unsubscribeCounts(); unsubscribeCounts = null; }
-        if (unsubscribeBookings) { unsubscribeBookings(); unsubscribeBookings = null; }
-        bookingCounts = {};
-        latestBookings = [];
-        $("#section-login")?.classList.add("hidden");
-        $("#section-denied")?.classList.remove("hidden");
-        $("#section-admin")?.classList.add("hidden");
-      }
-    } else {
-      if (unsubscribeCounts) { unsubscribeCounts(); unsubscribeCounts = null; }
-      if (unsubscribeBookings) { unsubscribeBookings(); unsubscribeBookings = null; }
-      bookingCounts = {};
-      latestBookings = [];
-      nameEl?.classList.add("hidden");
-      logoutBtn?.classList.add("hidden");
-      $("#section-login")?.classList.remove("hidden");
-      $("#section-denied")?.classList.add("hidden");
-      $("#section-admin")?.classList.add("hidden");
+    if (!user) {
+      nameEl.classList.add("hidden");
+      logoutBtn.classList.add("hidden");
+      show("#section-login");
+      return;
     }
+
+    nameEl.textContent = user.displayName || user.email;
+    nameEl.classList.remove("hidden");
+    logoutBtn.classList.remove("hidden");
+
+    if (!ADMIN_EMAILS.includes(normEmail(user.email))) {
+      show("#section-denied");
+      return;
+    }
+
+    show("#section-admin");
+    unsubscribers.push(
+      onGroupsChange((data) => { groupData = data; renderAll(); }),
+      onJoinsChange((list) => { joins = list; renderAll(); }),
+      onAllAbsencesChange((list) => { absences = list; renderAll(); })
+    );
   });
 
-  $("#btn-login")?.addEventListener("click", loginWithGoogle);
-  $("#btn-logout")?.addEventListener("click", logout);
-  $("#tab-overview")?.addEventListener("click", () => switchTab("overview"));
-  $("#tab-list")?.addEventListener("click", () => switchTab("list"));
-  $("#btn-export")?.addEventListener("click", exportCSV);
+  $("#btn-login").addEventListener("click", loginWithGoogle);
+  $("#btn-logout").addEventListener("click", logout);
+  $$(".tab-btn").forEach((btn) => btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
+  $("#btn-export-groups").addEventListener("click", exportGroups);
+  $("#btn-export-absent").addEventListener("click", exportAbsences);
+  $("#btn-rebuild").addEventListener("click", handleRebuild);
 });
 
 function switchTab(tab) {
-  const isOverview = tab === "overview";
-  $("#admin-overview-panel")?.classList.toggle("hidden", !isOverview);
-  $("#admin-list-panel")?.classList.toggle("hidden", isOverview);
-  $("#tab-overview")?.classList.toggle("tab-active", isOverview);
-  $("#tab-list")?.classList.toggle("tab-active", !isOverview);
-  if (!isOverview) loadAdminList();
+  $$(".tab-btn").forEach((btn) => btn.classList.toggle("tab-active", btn.dataset.tab === tab));
+  ["groups", "absent", "tools"].forEach((t) => $(`#panel-${t}`).classList.toggle("hidden", t !== tab));
 }
 
-function renderAdminOverview() {
-  const tbody = $("#admin-theme-overview");
-  if (!tbody) return;
-  tbody.innerHTML = THEMES.map((t) => {
-    const count = bookingCounts[t.id] || 0;
-    const remaining = t.capacity - count;
-    const full = remaining <= 0;
-    const pct = Math.min((count / t.capacity) * 100, 100);
-    const cls = full ? "remaining-full" : remaining <= 2 ? "remaining-low" : "remaining-ok";
+function renderAll() {
+  renderStats();
+  renderGroups();
+  renderAbsences();
+}
+
+function renderStats() {
+  const joined = joins.length;
+  const absent = absences.length;
+  const pending = Math.max(0, EVENT.staffCount - joined - absent);
+  const notReady = GROUPS.some((g) => !(g.id in groupData));
+  $("#stats").innerHTML = `
+    <div class="stat"><span>已選組</span><strong>${joined}</strong></div>
+    <div class="stat"><span>不能參加</span><strong>${absent}</strong></div>
+    <div class="stat"><span>還沒回覆（約）</span><strong>${pending}</strong></div>
+    ${notReady ? `<p class="card warning">組別還沒建立，同仁目前無法選組。請到「設定」按一次「建立組別並重新計算」。</p>` : ""}`;
+}
+
+function renderGroups() {
+  $("#admin-groups").innerHTML = GROUPS.map((g) => {
+    const members = joins.filter((j) => j.groupId === g.id).sort(byTime);
+    const teamName = groupData[g.id]?.teamName || "";
+    const count = groupData[g.id]?.count ?? 0;
+    const mismatch = (g.id in groupData) && count !== members.length;
     return `
-      <tr class="${full ? "row-full" : ""}">
-        <td class="theme-name-cell">
-          <a href="${t.url}" target="_blank" rel="noopener">${t.name}</a>
-          <span class="theme-range">${t.desc}</span>
-        </td>
-        <td class="count-cell">
-          <div class="progress-wrap">
-            <div class="progress-bar ${full ? "bar-full" : remaining <= 2 ? "bar-low" : "bar-ok"}" style="width:${pct}%"></div>
-          </div>
-          <span class="count-label">${count}/${t.capacity}</span>
-        </td>
-        <td class="remaining-cell">
-          ${full ? `<span class="badge-full">額滿</span>` : `<span class="${cls}">${remaining}</span>`}
-        </td>
-      </tr>`;
+      <div class="card group-card">
+        <div class="group-head">
+          <h3>${esc(g.name)}</h3>
+          <span class="group-count">${members.length} / ${GROUP_CAPACITY}</span>
+        </div>
+        <p class="team-name ${teamName ? "" : "team-name-empty"}">${teamName ? esc(teamName) : "還沒取隊名"}</p>
+        ${mismatch ? `<p class="small warning-text">人數紀錄是 ${count}，跟名單對不起來，請到「設定」重新計算。</p>` : ""}
+        <ul class="member-list">
+          ${members.length ? members.map((m) => `
+            <li>
+              <span>${esc(m.displayName || accountOf(m.email))}
+                <small class="muted">${esc(accountOf(m.email))}${m.addedBy && m.addedBy !== m.email ? `・${esc(accountOf(m.addedBy))} 代報` : ""}</small>
+              </span>
+              <button class="btn-text btn-del-join" data-email="${esc(m.email)}">刪除</button>
+            </li>`).join("") : `<li class="muted">還沒有人</li>`}
+        </ul>
+      </div>`;
   }).join("");
+
+  $$(".btn-del-join").forEach((btn) => btn.addEventListener("click", async () => {
+    if (!confirm(`確定要把 ${accountOf(btn.dataset.email)} 移出組別嗎？`)) return;
+    try { await removeMember(btn.dataset.email); showToast("已移出。"); }
+    catch (err) { console.error(err); showToast("操作失敗，請稍後再試。", true); }
+  }));
 }
 
-function renderAdminList(bookings = latestBookings) {
-  const tbody = $("#booking-list-body");
-  if (!tbody) return;
-
-  const countEl = $("#booking-count");
-  if (countEl) countEl.textContent = bookings.length;
-
-  if (bookings.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty-cell">目前尚無預約資料。</td></tr>`;
+function renderAbsences() {
+  const tbody = $("#absent-body");
+  if (!absences.length) {
+    tbody.innerHTML = `<tr><td colspan="6" class="muted center">目前沒有人回報不能參加。</td></tr>`;
     return;
   }
+  tbody.innerHTML = [...absences].sort(byTime).map((a) => `
+    <tr>
+      <td>${esc(a.displayName || "")}</td>
+      <td>${esc(accountOf(a.email))}</td>
+      <td>${esc(a.reasonType)}</td>
+      <td>${esc(a.reasonNote || "")}</td>
+      <td>${esc(fmtTime(a.updatedAt || a.createdAt))}</td>
+      <td><button class="btn-text btn-del-absence" data-email="${esc(a.email)}">刪除</button></td>
+    </tr>`).join("");
 
-  const sorted = [...bookings].sort((a, b) => String(a.themeId).localeCompare(String(b.themeId)));
-  tbody.innerHTML = sorted.map((b) => {
-    const theme = THEMES.find((t) => t.id === b.themeId);
-    const createdAt = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleString("zh-TW") : "—";
-    const dependents = Array.isArray(b.dependents) ? b.dependents : [];
-    const totalPeople = Number(b.totalPeople) || (1 + dependents.length);
-    const dependentNames = dependents.length ? dependents.map((d) => d.name).join("、") : "無";
-    return `
-      <tr>
-        <td>${b.displayName || "—"}</td>
-        <td>${b.email}</td>
-        <td>${theme?.name || b.themeId}</td>
-        <td><strong>${totalPeople} 人</strong><br><span class="table-subtext">眷屬：${dependentNames}</span></td>
-        <td>${createdAt}</td>
-        <td><button class="btn-admin-del" data-uid="${b.uid}" data-theme="${b.themeId}">刪除</button></td>
-      </tr>`;
-  }).join("");
-
-  $$(".btn-admin-del").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      if (!confirm(`確定要刪除這筆預約嗎？`)) return;
-      try {
-        await adminDeleteBooking(btn.dataset.uid);
-        showToast("已刪除預約。");
-      } catch (err) {
-        showToast("刪除失敗，請稍後再試。", true);
-      }
-    });
-  });
+  $$(".btn-del-absence").forEach((btn) => btn.addEventListener("click", async () => {
+    if (!confirm(`確定要刪除 ${accountOf(btn.dataset.email)} 的回報嗎？`)) return;
+    try { await withdrawAbsence(btn.dataset.email); showToast("已刪除。"); }
+    catch (err) { console.error(err); showToast("操作失敗，請稍後再試。", true); }
+  }));
 }
 
-async function loadAdminList() {
+async function handleRebuild() {
+  if (!confirm("要依目前名單重新計算各組人數嗎？")) return;
   try {
-    latestBookings = await getAllBookings();
-    renderAdminList(latestBookings);
+    await rebuildGroupCounts(GROUPS.map((g) => g.id));
+    showToast("完成，各組已開放報名。");
   } catch (err) {
-    const tbody = $("#booking-list-body");
-    if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="error-cell">載入失敗，請重新整理。</td></tr>`;
     console.error(err);
+    showToast("操作失敗，請確認是否用管理員帳號登入。", true);
   }
 }
 
-async function exportCSV() {
-  const bookings = await getAllBookings();
-  const header = ["姓名", "Email", "主題", "總人數", "眷屬", "報名時間"];
-  const rows = bookings.map((b) => {
-    const theme = THEMES.find((t) => t.id === b.themeId);
-    const createdAt = b.createdAt?.toDate ? b.createdAt.toDate().toLocaleString("zh-TW") : "";
-    const dependents = Array.isArray(b.dependents) ? b.dependents : [];
-    const totalPeople = b.totalPeople || (1 + dependents.length);
-    const dependentNames = dependents.map((d) => d.name).join("、");
-    return [b.displayName || "", b.email, theme?.name || b.themeId, totalPeople, dependentNames, createdAt]
-      .map((v) => `"${String(v).replaceAll('"', '""')}"`).join(",");
-  });
-  const csv = "\uFEFF" + [header.join(","), ...rows].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
+// ---- 匯出 CSV ----
+
+function downloadCSV(filename, header, rows) {
+  const line = (cols) => cols.map((v) => `"${String(v ?? "").replaceAll('"', '""')}"`).join(",");
+  const csv = "﻿" + [line(header), ...rows.map(line)].join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
   const a = document.createElement("a");
   a.href = url;
-  a.download = `密室逃脫報名名單_${new Date().toLocaleDateString("zh-TW")}.csv`;
+  a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
 }
 
+function today() {
+  return new Date().toLocaleDateString("zh-TW").replaceAll("/", "-");
+}
+
+function exportGroups() {
+  const rows = [];
+  GROUPS.forEach((g) => {
+    joins.filter((j) => j.groupId === g.id).sort(byTime).forEach((m) => {
+      rows.push([
+        g.name,
+        groupData[g.id]?.teamName || "",
+        m.displayName || "",
+        m.email,
+        m.addedBy && m.addedBy !== m.email ? accountOf(m.addedBy) : "",
+        fmtTime(m.createdAt)
+      ]);
+    });
+  });
+  downloadCSV(`野餐日分組名單_${today()}.csv`, ["組別", "隊名", "姓名", "信箱", "代報人", "報名時間"], rows);
+}
+
+function exportAbsences() {
+  const rows = [...absences].sort(byTime).map((a) => [
+    a.displayName || "", a.email, a.reasonType, a.reasonNote || "", fmtTime(a.updatedAt || a.createdAt)
+  ]);
+  downloadCSV(`野餐日不能參加名單_${today()}.csv`, ["姓名", "信箱", "原因", "說明", "回報時間"], rows);
+}
+
 function showToast(msg, isError = false) {
-  const existing = $("#toast");
-  if (existing) existing.remove();
+  $("#toast")?.remove();
   const toast = document.createElement("div");
   toast.id = "toast";
   toast.className = `toast ${isError ? "toast-error" : "toast-success"}`;

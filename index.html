@@ -3,106 +3,98 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Easymap 易圖科技｜部門密室逃脫活動報名</title>
-  <meta name="description" content="Easymap 易圖科技 2026 部門密室逃脫活動報名系統" />
+  <title>易圖野餐日｜分組報名</title>
+  <meta name="description" content="2026/12/4 易圖日・易起野餐趣 分組報名" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Share+Tech+Mono&family=Noto+Serif+TC:wght@700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=5" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=6" />
 </head>
 <body>
 
 <header class="site-header">
   <div class="header-brand">
-    <span class="brand-icon" aria-hidden="true">🛰️</span>
+    <span class="brand-icon" aria-hidden="true">🧺</span>
     <div>
-      <span class="brand-title">Easymap 易圖科技</span>
-      <span class="brand-subtitle">Department Escape Festival 2026</span>
+      <span class="brand-title">易圖野餐日</span>
+      <span class="brand-subtitle">Easymap 易圖科技</span>
     </div>
   </div>
   <div class="header-user">
     <span id="user-name" class="hidden user-chip"></span>
-    <a href="admin.html" class="btn-outline header-link">管理後台</a>
+    <a href="admin.html" class="btn-outline">管理後台</a>
     <button id="btn-logout" class="btn-outline hidden">登出</button>
   </div>
 </header>
 
 <main>
 
-  <section id="section-login" class="hero-section">
-    <div class="hero-orb" aria-hidden="true">🔓</div>
-    <p class="eyebrow">EASYMAP SPACE MISSION</p>
-    <h1 class="login-title">2026 部門密室逃脫</h1>
-    <p class="login-sub">
-      9 月 11 日（五）19:00 正式集合。<br>
-      請使用公司 Google 帳號登入後，選擇想挑戰的密室主題。
-    </p>
-
-    <div class="login-notice">
-      <strong>報名前提醒</strong>
-      <span>一個 Google 帳號限填一次。系統會即時顯示剩餘名額，額滿後將無法選擇該主題。</span>
-      <span>若攜帶眷屬，眷屬費用需自行負擔，請事先確認。</span>
-    </div>
-
-    <button id="btn-login" class="btn-google">
-      <span class="btn-google-icon">G</span>
-      使用 Google 帳號登入
-    </button>
+  <section class="hero">
+    <p class="hero-tag">12/4 部門活動</p>
+    <h1 id="event-name">易圖日・易起野餐趣</h1>
+    <p class="hero-slogan" id="event-slogan"></p>
+    <dl class="event-facts">
+      <div><dt>日期</dt><dd id="event-date"></dd></div>
+      <div><dt>時間</dt><dd id="event-time"></dd></div>
+      <div><dt>地點</dt><dd id="event-place"></dd></div>
+    </dl>
   </section>
 
-  <section id="section-main" class="hidden dashboard-section">
-    <div class="page-heading">
-      <p class="eyebrow">MISSION CONTROL</p>
-      <h2>部門逃脫任務面板</h2>
-      <p>查看你的預約狀態、各主題剩餘名額，並選擇本次要挑戰的密室。</p>
+  <section class="info-grid">
+    <div class="card">
+      <h2 class="card-heading">活動流程</h2>
+      <ol class="agenda" id="agenda"></ol>
+    </div>
+    <div class="card">
+      <h2 class="card-heading">注意事項</h2>
+      <p class="list-label">請自己帶</p>
+      <ul class="chip-list" id="bring-items"></ul>
+      <p class="list-label">福委會準備</p>
+      <ul class="plain-list" id="provided-items"></ul>
+    </div>
+  </section>
+
+  <section id="section-login" class="card login-card">
+    <h2 class="card-heading">登入後選組</h2>
+    <ul class="rule-list">
+      <li>這次活動預設全員參加，每組 <span class="group-cap"></span> 人。可以自己選一組，也可以由隊長先加入，再輸入隊友的帳號幫大家一起報名。</li>
+      <li>6 位主管之後會隨機分進各組，報名時不用算進去。</li>
+      <li>當天有公假、出差等原因不能來，請在 <strong class="reply-deadline"></strong>前回報，名單會在活動前三天交給處長。</li>
+      <li>福委會同仁當天是工作人員，不用選組。</li>
+    </ul>
+    <button id="btn-login" class="btn-primary btn-login">使用公司 Google 帳號登入</button>
+  </section>
+
+  <section id="section-main" class="hidden">
+
+    <p id="domain-warning" class="card warning hidden">你目前登入的不是公司帳號（<span class="email-domain"></span>），可能沒辦法報名，請登出後改用公司帳號。</p>
+
+    <div class="card status-card" id="my-status"></div>
+
+    <div id="absence-form-wrap" class="card hidden">
+      <h2 class="card-heading">回報不能參加</h2>
+      <p class="muted">請選擇原因，需要的話可以補充說明。送出後隨時可以修改或撤回。</p>
+      <form id="absence-form" class="absence-form">
+        <label for="absence-type">原因</label>
+        <select id="absence-type" required></select>
+        <label for="absence-note">補充說明（選填，最多 200 字）</label>
+        <textarea id="absence-note" maxlength="200" rows="3" placeholder="例如：當天到台北開會"></textarea>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary">送出</button>
+          <button type="button" id="btn-absence-cancel" class="btn-outline">先不要</button>
+        </div>
+      </form>
     </div>
 
-    <section class="panel-block">
-      <div class="section-heading">
-        <p class="section-title">我的預約</p>
-        <span class="section-tag">My Booking</span>
-      </div>
-      <div class="panel" id="my-booking">
-        <p class="no-booking">尚未選擇主題，請從下方選一個你想玩的密室。</p>
-      </div>
-    </section>
-
-
-    <section class="panel-block" id="party-panel">
-      <div class="section-heading">
-        <div>
-          <p class="section-title">報名人數設定</p>
-          <p class="section-note">本人會自動計入 1 位；如果要幫眷屬一起報名，請在這裡新增。名額會依總人數扣除。</p>
-        </div>
-        <span class="section-tag">Party Size</span>
-      </div>
-      <div class="panel party-panel-inner">
-        <div class="party-main-row">
-          <div>
-            <span class="party-label">本次預約總人數</span>
-            <strong><span id="party-size">1</span> 人</strong>
-          </div>
-          <button id="btn-add-dependent" type="button" class="btn-outline">＋ 新增眷屬</button>
-        </div>
-        <div id="dependents-list" class="dependents-list"></div>
-        <p class="family-notice">提醒：眷屬會一起佔用該主題名額，請確認人數後再選擇主題。</p>
-      </div>
-    </section>
-
-    <section class="panel-block">
-      <div class="section-heading">
-        <div>
-          <p class="section-title">選擇密室主題</p>
-          <p class="section-note">點選主題連結可查看官方介紹，選好後按「選擇此主題」完成報名。</p>
-        </div>
-        <span class="section-tag">Escape Themes</span>
-      </div>
-      <div class="cards-grid" id="theme-cards"></div>
-    </section>
+    <div class="section-head">
+      <h2>選擇組別</h2>
+      <p class="muted">每組 <span class="group-cap"></span> 人，組員名單大家都看得到。加入後可以取隊名、幫隊友報名；想換組請先退出目前的組。</p>
+    </div>
+    <div class="groups-grid" id="group-cards"></div>
   </section>
 
 </main>
 
-<script type="module" src="app.js?v=5"></script>
+<script type="module" src="app.js?v=6"></script>
 </body>
 </html>

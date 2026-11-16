@@ -3,115 +3,92 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Easymap 易圖科技｜管理後台</title>
-  <meta name="description" content="Easymap 易圖科技部門密室逃脫活動管理後台" />
+  <title>易圖野餐日｜管理後台</title>
+  <meta name="description" content="易圖野餐日分組報名管理後台" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Share+Tech+Mono&family=Noto+Serif+TC:wght@700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=5" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=6" />
 </head>
 <body>
 
 <header class="site-header">
   <div class="header-brand">
-    <span class="brand-icon" aria-hidden="true">🛰️</span>
+    <span class="brand-icon" aria-hidden="true">🧺</span>
     <div>
-      <span class="brand-title">Easymap 易圖科技</span>
-      <span class="brand-subtitle">Admin Mission Control</span>
+      <span class="brand-title">易圖野餐日</span>
+      <span class="brand-subtitle">管理後台</span>
     </div>
   </div>
   <div class="header-user">
     <span id="user-name" class="hidden user-chip"></span>
-    <a href="index.html" class="btn-outline header-link">前往報名頁</a>
+    <a href="index.html" class="btn-outline">回報名頁</a>
     <button id="btn-logout" class="btn-outline hidden">登出</button>
   </div>
 </header>
 
 <main>
 
-  <section id="section-login" class="hero-section">
-    <div class="hero-orb" aria-hidden="true">🔐</div>
-    <p class="eyebrow">ADMIN ACCESS</p>
-    <h1 class="login-title">管理員登入</h1>
-    <p class="login-sub">此頁面僅限管理員帳號使用，請以公司 Google 帳號登入。</p>
-    <button id="btn-login" class="btn-google">
-      <span class="btn-google-icon">G</span>
-      使用 Google 帳號登入
-    </button>
+  <section id="section-login" class="card login-card">
+    <h2 class="card-heading">管理員登入</h2>
+    <p class="muted">這一頁只開放福委管理員使用。</p>
+    <button id="btn-login" class="btn-primary btn-login">使用公司 Google 帳號登入</button>
   </section>
 
-  <section id="section-denied" class="hidden hero-section">
-    <div class="hero-orb danger" aria-hidden="true">🚫</div>
-    <p class="eyebrow danger-text">ACCESS DENIED</p>
-    <h1 class="login-title">無存取權限</h1>
-    <p class="login-sub">你的帳號不在管理員名單內，請回到報名頁操作。</p>
-    <a href="index.html" class="btn-primary denied-link">回到報名頁</a>
+  <section id="section-denied" class="card login-card hidden">
+    <h2 class="card-heading">沒有權限</h2>
+    <p class="muted">你的帳號不在管理員名單內。</p>
+    <a href="index.html" class="btn-primary btn-login">回報名頁</a>
   </section>
 
-  <section id="section-admin" class="hidden dashboard-section">
-    <div class="admin-header page-heading">
-      <p class="eyebrow">MISSION CONTROL</p>
-      <h2 class="admin-title">部門逃脫調度總部</h2>
-      <p class="admin-sub">2026 部門密室逃脫活動 ／ 9 月 11 日（五）19:00</p>
+  <section id="section-admin" class="hidden">
+    <div class="section-head">
+      <h2>報名狀況</h2>
+      <p class="muted" id="admin-event"></p>
     </div>
 
-    <div class="admin-tabs">
-      <button id="tab-overview" class="tab-btn tab-active">名額總覽</button>
-      <button id="tab-list" class="tab-btn">預約名單</button>
+    <div class="stats" id="stats"></div>
+
+    <div class="tabs">
+      <button class="tab-btn tab-active" data-tab="groups">分組名單</button>
+      <button class="tab-btn" data-tab="absent">不能參加</button>
+      <button class="tab-btn" data-tab="tools">設定</button>
     </div>
 
-    <div id="admin-overview-panel" class="panel-block">
-      <div class="section-heading">
-        <p class="section-title">各主題名額總覽</p>
-        <span class="section-tag">Real-time Capacity</span>
+    <div id="panel-groups" class="tab-panel">
+      <div class="toolbar">
+        <p class="muted">每組 <span class="group-cap"></span> 人，主管之後再隨機分配。</p>
+        <button id="btn-export-groups" class="btn-primary">匯出分組名單 CSV</button>
       </div>
-      <div class="overview-wrap">
-        <table class="overview-table">
+      <div class="groups-grid" id="admin-groups"></div>
+    </div>
+
+    <div id="panel-absent" class="tab-panel hidden">
+      <div class="toolbar">
+        <p class="muted">請在活動前三天把這份名單交給處長。</p>
+        <button id="btn-export-absent" class="btn-primary">匯出不能參加名單 CSV</button>
+      </div>
+      <div class="card table-wrap">
+        <table>
           <thead>
-            <tr>
-              <th>主題</th>
-              <th>報名進度</th>
-              <th style="text-align:center">剩餘名額</th>
-            </tr>
+            <tr><th>姓名</th><th>帳號</th><th>原因</th><th>說明</th><th>回報時間</th><th></th></tr>
           </thead>
-          <tbody id="admin-theme-overview">
-            <tr><td colspan="3" class="loading-cell">載入中…</td></tr>
-          </tbody>
+          <tbody id="absent-body"></tbody>
         </table>
       </div>
     </div>
 
-    <div id="admin-list-panel" class="hidden panel-block">
-      <div class="list-toolbar">
-        <div>
-          <p class="section-title">預約名單</p>
-          <p class="section-note">目前共 <strong id="booking-count">0</strong> 筆預約資料。</p>
-        </div>
-        <button id="btn-export" class="btn-primary">匯出 CSV</button>
-      </div>
-
-      <div class="list-wrap">
-        <table class="list-table">
-          <thead>
-            <tr>
-              <th>姓名</th>
-              <th>Email</th>
-              <th>主題</th>
-              <th>人數 / 眷屬</th>
-              <th>報名時間</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody id="booking-list-body">
-            <tr><td colspan="6" class="loading-cell">載入中…</td></tr>
-          </tbody>
-        </table>
+    <div id="panel-tools" class="tab-panel hidden">
+      <div class="card">
+        <h3 class="card-heading">開放報名 / 重新計算人數</h3>
+        <p class="muted">第一次上線時請按一次，系統會建立 8 個組別。之後如果發現某組人數跟名單對不起來，也可以按這個重算。隊名不會被清掉。</p>
+        <button id="btn-rebuild" class="btn-outline">建立組別並重新計算</button>
       </div>
     </div>
   </section>
 
 </main>
 
-<script type="module" src="admin.js?v=5"></script>
+<script type="module" src="admin.js?v=6"></script>
 </body>
 </html>

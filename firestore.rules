@@ -1,112 +1,151 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isSignedIn() {
-      return request.auth != null;
+    // 組數、每組上限、信箱網域有改時，記得同步修改 event-config.js
+    function groupCapacity() { return 7; }
+
+    function validGroup(groupId) {
+      return groupId in [
+        'group-1', 'group-2', 'group-3', 'group-4',
+        'group-5', 'group-6', 'group-7', 'group-8'
+      ];
     }
 
+    function companyEmail(email) {
+      return email is string && email.matches('^[a-z0-9._-]+@gis[.]fcu[.]edu[.]tw$');
+    }
+
+    function validReason(reasonType) {
+      return reasonType in ['公假', '出差', '請假', '客戶會議或外部行程', '其他'];
+    }
+
+    function isSignedIn() { return request.auth != null; }
+    function myEmail() { return request.auth.token.email.lower(); }
+
     function isAdmin() {
-      return isSignedIn() && request.auth.token.email in [
+      return isSignedIn() && myEmail() in [
         'yoyoshen@gis.fcu.edu.tw',
         'irishuang@gis.fcu.edu.tw',
         'clarachou@gis.fcu.edu.tw'
       ];
     }
 
-    function validTheme(themeId) {
-      return themeId in [
-        'butterfly-valley',
-        'death-attic',
-        'forsaken-girl',
-        'diesel-street',
-        'dark-alley'
-      ];
+    function joinPath(email) { return /databases/$(database)/documents/picnicJoins/$(email); }
+    function absencePath(email) { return /databases/$(database)/documents/picnicAbsences/$(email); }
+    function groupPath(groupId) { return /databases/$(database)/documents/picnicGroups/$(groupId); }
+
+    function isMemberOf(groupId) {
+      return exists(joinPath(myEmail())) && get(joinPath(myEmail())).data.groupId == groupId;
     }
 
-    function themeCapacity(themeId) {
-      return themeId == 'butterfly-valley' ? 5 :
-        themeId == 'death-attic' ? 7 :
-        themeId == 'forsaken-girl' ? 10 :
-        themeId == 'diesel-street' ? 5 :
-        themeId == 'dark-alley' ? 8 : 0;
+    // ---- 各組人數與隊名 ----
+
+    function validGroupDoc(groupId) {
+      let d = request.resource.data;
+      return validGroup(groupId) &&
+        d.keys().hasOnly(['count', 'teamName', 'teamNameBy', 'lastChange']) &&
+        d.count is int &&
+        d.count >= 0 &&
+        d.count <= groupCapacity() &&
+        (!('teamName' in d) || (d.teamName is string && d.teamName.size() <= 20));
     }
 
-    function bookingPath(uid) {
-      return /databases/$(database)/documents/bookings/$(uid);
+    function changedOnly(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
 
-    function counterPath(themeId) {
-      return /databases/$(database)/documents/counters/$(themeId);
+    // 同一個 transaction 內有一個人加入這組，人數 +1
+    function memberAdded(groupId) {
+      let email = request.resource.data.lastChange;
+      return changedOnly(['count', 'lastChange']) &&
+        request.resource.data.count == resource.data.count + 1 &&
+        !exists(joinPath(email)) &&
+        existsAfter(joinPath(email)) &&
+        getAfter(joinPath(email)).data.groupId == groupId;
     }
 
-    function validBookingShape(uid) {
-      return request.resource.data.keys().hasOnly([
-          'uid', 'email', 'displayName', 'themeId', 'dependents',
-          'totalPeople', 'createdAt', 'updatedAt'
-        ]) &&
-        request.resource.data.uid == uid &&
-        request.resource.data.email == request.auth.token.email &&
-        request.resource.data.displayName is string &&
-        request.resource.data.themeId is string &&
-        validTheme(request.resource.data.themeId) &&
-        request.resource.data.dependents is list &&
-        request.resource.data.totalPeople is int &&
-        request.resource.data.totalPeople == request.resource.data.dependents.size() + 1 &&
-        request.resource.data.totalPeople > 0 &&
-        request.resource.data.totalPeople <= themeCapacity(request.resource.data.themeId);
+    // 同一個 transaction 內有一個人離開這組，人數 -1；最後一位離開時可清空隊名
+    function memberRemoved(groupId) {
+      let email = request.resource.data.lastChange;
+      return (changedOnly(['count', 'lastChange']) ||
+          (request.resource.data.count == 0 &&
+            request.resource.data.teamName == '' &&
+            request.resource.data.teamNameBy == '')) &&
+        request.resource.data.count == resource.data.count - 1 &&
+        exists(joinPath(email)) &&
+        !existsAfter(joinPath(email)) &&
+        get(joinPath(email)).data.groupId == groupId;
     }
 
-    function counterCountIsValid(themeId) {
-      return request.resource.data.keys().hasOnly(['count']) &&
-        request.resource.data.count is int &&
-        request.resource.data.count >= 0 &&
-        request.resource.data.count <= themeCapacity(themeId);
+    // 組員才能改自己組的隊名
+    function memberRenames(groupId) {
+      return changedOnly(['teamName', 'teamNameBy']) &&
+        request.resource.data.teamNameBy == myEmail() &&
+        isMemberOf(groupId);
     }
 
-    function createsOwnBookingForCounter(themeId) {
-      return isSignedIn() &&
-        validTheme(themeId) &&
-        exists(counterPath(themeId)) &&
-        !exists(bookingPath(request.auth.uid)) &&
-        existsAfter(bookingPath(request.auth.uid)) &&
-        getAfter(bookingPath(request.auth.uid)).data.themeId == themeId &&
-        getAfter(bookingPath(request.auth.uid)).data.totalPeople is int &&
-        request.resource.data.count == resource.data.count + getAfter(bookingPath(request.auth.uid)).data.totalPeople;
-    }
-
-    function deletesOwnBookingForCounter(themeId) {
-      return isSignedIn() &&
-        validTheme(themeId) &&
-        exists(bookingPath(request.auth.uid)) &&
-        !existsAfter(bookingPath(request.auth.uid)) &&
-        get(bookingPath(request.auth.uid)).data.themeId == themeId &&
-        get(bookingPath(request.auth.uid)).data.totalPeople is int &&
-        request.resource.data.count == resource.data.count - get(bookingPath(request.auth.uid)).data.totalPeople;
-    }
-
-    match /bookings/{uid} {
-      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
-      allow create: if isSignedIn() && request.auth.uid == uid && validBookingShape(uid) &&
-        exists(counterPath(request.resource.data.themeId)) &&
-        getAfter(counterPath(request.resource.data.themeId)).data.count ==
-          get(counterPath(request.resource.data.themeId)).data.count + request.resource.data.totalPeople;
-      allow update: if false;
-      allow delete: if isSignedIn() && (
-        (request.auth.uid == uid &&
-          getAfter(counterPath(resource.data.themeId)).data.count == get(counterPath(resource.data.themeId)).data.count - resource.data.totalPeople) ||
-        isAdmin()
-      );
-    }
-
-    match /counters/{themeId} {
+    match /picnicGroups/{groupId} {
       allow read: if isSignedIn();
-      allow create: if isAdmin() && counterCountIsValid(themeId);
-      allow update: if counterCountIsValid(themeId) && (
-        isAdmin() ||
-        createsOwnBookingForCounter(themeId) ||
-        deletesOwnBookingForCounter(themeId)
-      );
+      allow create: if isAdmin() && validGroupDoc(groupId);
+      allow update: if isSignedIn() && validGroupDoc(groupId) &&
+        (isAdmin() || memberAdded(groupId) || memberRemoved(groupId) || memberRenames(groupId));
       allow delete: if false;
+    }
+
+    // ---- 選組資料（本人報名或隊長代報） ----
+
+    match /picnicJoins/{email} {
+      allow read: if isSignedIn();
+
+      // 本人可以報名自己；已在組裡的人可以把隊友加進同一組
+      allow create: if isSignedIn() &&
+        companyEmail(email) &&
+        request.resource.data.keys().hasOnly(['email', 'displayName', 'groupId', 'addedBy', 'addedByName', 'createdAt']) &&
+        request.resource.data.email == email &&
+        request.resource.data.displayName is string &&
+        request.resource.data.displayName.size() > 0 &&
+        request.resource.data.displayName.size() <= 30 &&
+        request.resource.data.addedBy == myEmail() &&
+        request.resource.data.addedByName is string &&
+        validGroup(request.resource.data.groupId) &&
+        (email == myEmail() || isMemberOf(request.resource.data.groupId)) &&
+        !exists(absencePath(email)) &&
+        // 每次只能加一個人：組別的 lastChange 必須是這筆資料本身
+        getAfter(groupPath(request.resource.data.groupId)).data.lastChange == email &&
+        getAfter(groupPath(request.resource.data.groupId)).data.count ==
+          get(groupPath(request.resource.data.groupId)).data.count + 1;
+
+      // 被代報的人第一次登入時，把名單上的帳號換成本人的名字
+      allow update: if isSignedIn() && email == myEmail() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']) &&
+        request.resource.data.displayName is string &&
+        request.resource.data.displayName.size() > 0 &&
+        request.resource.data.displayName.size() <= 30;
+
+      // 本人退出、代報的人移除自己加的隊友、管理員刪除
+      allow delete: if isSignedIn() && (
+        isAdmin() ||
+        ((email == myEmail() || resource.data.addedBy == myEmail()) &&
+          getAfter(groupPath(resource.data.groupId)).data.lastChange == email &&
+          getAfter(groupPath(resource.data.groupId)).data.count ==
+            get(groupPath(resource.data.groupId)).data.count - 1)
+      );
+    }
+
+    // ---- 不能參加的回報（只有本人與管理員看得到） ----
+
+    match /picnicAbsences/{email} {
+      allow read: if isSignedIn() && (email == myEmail() || isAdmin());
+      allow create, update: if isSignedIn() && email == myEmail() &&
+        companyEmail(email) &&
+        request.resource.data.keys().hasOnly(['email', 'displayName', 'reasonType', 'reasonNote', 'createdAt', 'updatedAt']) &&
+        request.resource.data.email == email &&
+        request.resource.data.displayName is string &&
+        validReason(request.resource.data.reasonType) &&
+        request.resource.data.reasonNote is string &&
+        request.resource.data.reasonNote.size() <= 200 &&
+        !exists(joinPath(email));
+      allow delete: if isSignedIn() && (email == myEmail() || isAdmin());
     }
   }
 }

@@ -1,6 +1,15 @@
 // ======================================================
 // firebase-db.js
-// 所有 Firestore 資料庫操作集中在此
+// 所有 Firebase 登入與 Firestore 讀寫集中在此
+//
+// 資料表（collection），文件 ID 一律用小寫的公司信箱：
+//   picnicGroups/{groupId}    { count, teamName, teamNameBy, lastChange }
+//                             各組人數與隊名，所有登入者可讀
+//   picnicJoins/{email}       選組資料（本人報名或隊長代報）
+//                             所有登入者可讀，用來顯示組員名單
+//   picnicAbsences/{email}    不能參加的回報與原因，只有本人與管理員可讀
+//
+// lastChange 記錄這次是誰加入或離開，讓安全規則確認人數有跟著正確增減。
 // ======================================================
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -14,9 +23,8 @@ import {
 import {
   getFirestore,
   doc,
-  getDoc,
-  setDoc,
   deleteDoc,
+  updateDoc,
   collection,
   getDocs,
   onSnapshot,
@@ -26,202 +34,210 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
-// --- 初始化 ---
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// ---- Auth ----
+const GROUPS_COL = "picnicGroups";
+const JOINS_COL = "picnicJoins";
+const ABSENCES_COL = "picnicAbsences";
 
-/** Google 登入（Popup） */
-async function loginWithGoogle() {
-  await signInWithPopup(auth, provider);
-}
+const normEmail = (email) => String(email || "").trim().toLowerCase();
 
-/** 登出 */
-async function logout() {
-  await signOut(auth);
-}
+// ---- 登入 ----
 
-/** 監聽登入狀態 */
-function onAuthChange(callback) {
-  return onAuthStateChanged(auth, callback);
-}
+async function loginWithGoogle() { await signInWithPopup(auth, provider); }
+async function logout() { await signOut(auth); }
+function onAuthChange(callback) { return onAuthStateChanged(auth, callback); }
 
-// ---- 主題名額即時監聽 ----
+// ---- 即時監聽 ----
 
-/**
- * 監聽各主題已報名人數
- * @param {function} callback - 收到 { themeId: count } 物件
- */
-function onBookingCountsChange(callback) {
-  // 名額同步以 counters 為唯一公開來源，避免一般使用者讀取所有 bookings 明細。
-  return onSnapshot(collection(db, "counters"), (snapshot) => {
-    const counts = {};
+/** 各組資料：{ groupId: { count, teamName } } */
+function onGroupsChange(callback) {
+  return onSnapshot(collection(db, GROUPS_COL), (snapshot) => {
+    const groups = {};
     snapshot.forEach((d) => {
       const data = d.data();
-      counts[d.id] = Number(data.count) || 0;
+      groups[d.id] = { count: Number(data.count) || 0, teamName: data.teamName || "" };
     });
-    callback(counts);
+    callback(groups);
   });
 }
 
-function onMyBookingChange(uid, callback) {
-  return onSnapshot(doc(db, "bookings", uid), (snap) => {
-    callback(snap.exists() ? snap.data() : null);
-  });
-}
-
-function onAllBookingsChange(callback) {
-  return onSnapshot(collection(db, "bookings"), (snapshot) => {
+/** 所有選組資料 */
+function onJoinsChange(callback) {
+  return onSnapshot(collection(db, JOINS_COL), (snapshot) => {
     callback(snapshot.docs.map((d) => d.data()));
   });
 }
 
-async function syncCountersFromBookings(themeIds = []) {
-  const snap = await getDocs(collection(db, "bookings"));
-  const counts = {};
-  themeIds.forEach((id) => { counts[id] = 0; });
-  snap.forEach((d) => {
-    const data = d.data();
-    if (!data.themeId) return;
-    const totalPeople = Number(data.totalPeople) || (Array.isArray(data.dependents) ? 1 + data.dependents.length : 1);
-    counts[data.themeId] = (counts[data.themeId] || 0) + totalPeople;
+/** 本人的不能參加回報 */
+function onMyAbsenceChange(email, callback) {
+  return onSnapshot(doc(db, ABSENCES_COL, normEmail(email)), (snap) => {
+    callback(snap.exists() ? snap.data() : null);
   });
-
-  const batch = writeBatch(db);
-  Object.entries(counts).forEach(([themeId, count]) => {
-    batch.set(doc(db, "counters", themeId), { count });
-  });
-  await batch.commit();
-  return counts;
 }
 
-// ---- 使用者預約 ----
-
-/**
- * 查詢目前登入者是否已有預約
- * @param {string} uid
- * @returns {object|null} 預約資料或 null
- */
-async function getMyBooking(uid) {
-  const ref = doc(db, "bookings", uid);
-  const snap = await getDoc(ref);
-  return snap.exists() ? snap.data() : null;
+/** 全部不能參加回報（管理員） */
+function onAllAbsencesChange(callback) {
+  return onSnapshot(collection(db, ABSENCES_COL), (snapshot) => {
+    callback(snapshot.docs.map((d) => d.data()));
+  });
 }
 
+// ---- 選組 ----
+
 /**
- * 建立或更新預約（含 transaction 防超訂）
- * @param {object} user - { uid, email, displayName }
- * @param {string} themeId
- * @param {number} maxCapacity - 該主題人數上限
- * @param {object} options - { dependents, totalPeople }
+ * 把一個人加進某組。
+ * 本人報名：member 就是自己；隊長代報：member 是隊友。
+ * @param {object} actor  目前登入者 { email, displayName }
+ * @param {object} member 要加入的人 { email }
  */
-async function upsertBooking(user, themeId, maxCapacity, options = {}) {
-  const bookingRef = doc(db, "bookings", user.uid);
-  const counterRef = doc(db, "counters", themeId);
-  const dependents = Array.isArray(options.dependents) ? options.dependents : [];
-  const totalPeople = Number(options.totalPeople) || (1 + dependents.length);
+async function addMember(actor, member, groupId, capacity) {
+  const actorEmail = normEmail(actor.email);
+  const memberEmail = normEmail(member.email);
+  const isSelf = actorEmail === memberEmail;
+
+  const joinRef = doc(db, JOINS_COL, memberEmail);
+  const absenceRef = doc(db, ABSENCES_COL, memberEmail);
+  const groupRef = doc(db, GROUPS_COL, groupId);
 
   await runTransaction(db, async (tx) => {
-    const existingSnap = await tx.get(bookingRef);
-    if (existingSnap.exists()) {
-      throw new Error("ALREADY_BOOKED");
+    const [joinSnap, groupSnap] = await Promise.all([tx.get(joinRef), tx.get(groupRef)]);
+    if (joinSnap.exists()) throw new Error(isSelf ? "ALREADY_JOINED" : "MEMBER_TAKEN");
+    if (!groupSnap.exists()) throw new Error("NOT_READY");
+
+    // 不能參加的回報只有本人與管理員看得到，代報時讀不到，交給安全規則擋
+    if (isSelf) {
+      const absenceSnap = await tx.get(absenceRef);
+      if (absenceSnap.exists()) throw new Error("MARKED_ABSENT");
     }
 
-    const counterSnap = await tx.get(counterRef);
-    const currentCount = counterSnap.exists() ? counterSnap.data().count : 0;
+    const count = Number(groupSnap.data().count) || 0;
+    if (count + 1 > capacity) throw new Error("FULL");
 
-    if (currentCount + totalPeople > maxCapacity) throw new Error("FULL");
+    tx.update(groupRef, { count: count + 1, lastChange: memberEmail });
+    tx.set(joinRef, {
+      email: memberEmail,
+      // 代報時先放帳號，本人登入後再換成他的名字
+      displayName: isSelf ? (actor.displayName || memberEmail.split("@")[0]) : memberEmail.split("@")[0],
+      groupId,
+      addedBy: actorEmail,
+      addedByName: actor.displayName || "",
+      createdAt: serverTimestamp()
+    });
+  });
+}
 
-    tx.set(counterRef, { count: currentCount + totalPeople });
-    tx.set(bookingRef, {
-      uid: user.uid,
-      email: user.email,
+/** 把一個人移出組別：本人退出、隊長移除自己加的人、管理員刪除 */
+async function removeMember(email) {
+  const memberEmail = normEmail(email);
+  const joinRef = doc(db, JOINS_COL, memberEmail);
+
+  await runTransaction(db, async (tx) => {
+    const joinSnap = await tx.get(joinRef);
+    if (!joinSnap.exists()) return;
+
+    const groupRef = doc(db, GROUPS_COL, joinSnap.data().groupId);
+    const groupSnap = await tx.get(groupRef);
+    const count = groupSnap.exists() ? Number(groupSnap.data().count) || 0 : 1;
+    const nextCount = Math.max(0, count - 1);
+
+    // 最後一位離開時，隊名一起清掉，讓下一隊重新取名
+    tx.update(groupRef, nextCount === 0
+      ? { count: 0, lastChange: memberEmail, teamName: "", teamNameBy: "" }
+      : { count: nextCount, lastChange: memberEmail });
+    tx.delete(joinRef);
+  });
+}
+
+/** 被代報的人登入後，把名單上的帳號換成本人的名字 */
+async function updateMyDisplayName(user) {
+  if (!user.displayName) return;
+  await updateDoc(doc(db, JOINS_COL, normEmail(user.email)), { displayName: user.displayName });
+}
+
+/** 組員修改自己組的隊名 */
+async function setTeamName(user, groupId, teamName) {
+  await updateDoc(doc(db, GROUPS_COL, groupId), {
+    teamName,
+    teamNameBy: normEmail(user.email)
+  });
+}
+
+// ---- 不能參加 ----
+
+/** 回報不能參加（已在組裡的人要先退出） */
+async function reportAbsence(user, reasonType, reasonNote) {
+  const email = normEmail(user.email);
+  const joinRef = doc(db, JOINS_COL, email);
+  const absenceRef = doc(db, ABSENCES_COL, email);
+
+  await runTransaction(db, async (tx) => {
+    const [joinSnap, absenceSnap] = await Promise.all([tx.get(joinRef), tx.get(absenceRef)]);
+    if (joinSnap.exists()) throw new Error("ALREADY_JOINED");
+
+    tx.set(absenceRef, {
+      email,
       displayName: user.displayName || "",
-      themeId,
-      dependents,
-      totalPeople,
-      createdAt: serverTimestamp(),
+      reasonType,
+      reasonNote,
+      createdAt: absenceSnap.exists() ? absenceSnap.data().createdAt : serverTimestamp(),
       updatedAt: serverTimestamp()
     });
   });
 }
 
-/**
- * 取消預約
- * @param {string} uid
- */
-async function cancelBooking(uid) {
-  const bookingRef = doc(db, "bookings", uid);
-
-  await runTransaction(db, async (tx) => {
-    const snap = await tx.get(bookingRef);
-    if (!snap.exists()) return;
-
-    const booking = snap.data();
-    const themeId = booking.themeId;
-    if (!themeId) throw new Error("INVALID_BOOKING");
-
-    const totalPeople = Number(booking.totalPeople) || (Array.isArray(booking.dependents) ? 1 + booking.dependents.length : 1);
-    const counterRef = doc(db, "counters", themeId);
-    const counterSnap = await tx.get(counterRef);
-    const count = counterSnap.exists() ? Number(counterSnap.data().count) || 0 : totalPeople;
-
-    tx.set(counterRef, { count: Math.max(0, count - totalPeople) });
-    tx.delete(bookingRef);
-  });
+/** 撤回不能參加的回報；管理員也可刪除 */
+async function withdrawAbsence(email) {
+  await deleteDoc(doc(db, ABSENCES_COL, normEmail(email)));
 }
 
-// ---- 管理員操作 ----
+// ---- 管理員 ----
 
-/**
- * 取得所有預約（管理員用）
- * @returns {Array} 預約清單
- */
-async function getAllBookings() {
-  const snap = await getDocs(collection(db, "bookings"));
+async function getAllJoins() {
+  const snap = await getDocs(collection(db, JOINS_COL));
   return snap.docs.map((d) => d.data());
 }
 
-/**
- * 管理員刪除指定預約
- * @param {string} uid
- */
-async function adminDeleteBooking(uid) {
-  const bookingRef = doc(db, "bookings", uid);
+async function getAllAbsences() {
+  const snap = await getDocs(collection(db, ABSENCES_COL));
+  return snap.docs.map((d) => d.data());
+}
 
-  await runTransaction(db, async (tx) => {
-    const snap = await tx.get(bookingRef);
-    if (!snap.exists()) return;
+/** 依選組資料重新計算各組人數；第一次使用時也會建立各組文件 */
+async function rebuildGroupCounts(groupIds = []) {
+  const joins = await getAllJoins();
+  const counts = {};
+  groupIds.forEach((id) => { counts[id] = 0; });
+  joins.forEach((j) => { if (j.groupId in counts) counts[j.groupId] += 1; });
 
-    const booking = snap.data();
-    const themeId = booking.themeId;
-    if (!themeId) throw new Error("INVALID_BOOKING");
-
-    const totalPeople = Number(booking.totalPeople) || (Array.isArray(booking.dependents) ? 1 + booking.dependents.length : 1);
-    const counterRef = doc(db, "counters", themeId);
-    const counterSnap = await tx.get(counterRef);
-    const count = counterSnap.exists() ? Number(counterSnap.data().count) || 0 : totalPeople;
-
-    tx.set(counterRef, { count: Math.max(0, count - totalPeople) });
-    tx.delete(bookingRef);
+  const batch = writeBatch(db);
+  Object.entries(counts).forEach(([groupId, count]) => {
+    batch.set(doc(db, GROUPS_COL, groupId), { count }, { merge: true });
   });
+  await batch.commit();
+  return counts;
 }
 
 export {
   auth,
+  normEmail,
   loginWithGoogle,
   logout,
   onAuthChange,
-  onBookingCountsChange,
-  onMyBookingChange,
-  onAllBookingsChange,
-  syncCountersFromBookings,
-  getMyBooking,
-  upsertBooking,
-  cancelBooking,
-  getAllBookings,
-  adminDeleteBooking
+  onGroupsChange,
+  onJoinsChange,
+  onMyAbsenceChange,
+  onAllAbsencesChange,
+  addMember,
+  removeMember,
+  setTeamName,
+  updateMyDisplayName,
+  reportAbsence,
+  withdrawAbsence,
+  getAllJoins,
+  getAllAbsences,
+  rebuildGroupCounts
 };
