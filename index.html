@@ -8,18 +8,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=7" />
 </head>
 <body>
 
 <header class="site-header">
-  <div class="header-brand">
-    <span class="brand-icon" aria-hidden="true">🧺</span>
-    <div>
-      <span class="brand-title">易圖野餐日</span>
-      <span class="brand-subtitle">Easymap 易圖科技</span>
-    </div>
-  </div>
+  <a href="index.html" class="header-brand">
+    <img src="images/logo.png" alt="Easymap 易圖科技" class="brand-logo" />
+    <span class="brand-title">野餐日報名</span>
+  </a>
   <div class="header-user">
     <span id="user-name" class="hidden user-chip"></span>
     <a href="admin.html" class="btn-outline">管理後台</a>
@@ -30,38 +27,55 @@
 <main>
 
   <section class="hero">
-    <p class="hero-tag">12/4 部門活動</p>
-    <h1 id="event-name">易圖日・易起野餐趣</h1>
-    <p class="hero-slogan" id="event-slogan"></p>
-    <dl class="event-facts">
-      <div><dt>日期</dt><dd id="event-date"></dd></div>
-      <div><dt>時間</dt><dd id="event-time"></dd></div>
-      <div><dt>地點</dt><dd id="event-place"></dd></div>
-    </dl>
+    <div class="hero-text">
+      <h1 id="event-name">易圖日・易起野餐趣</h1>
+      <p class="hero-slogan" id="event-slogan"></p>
+      <dl class="event-facts">
+        <div><dt>日期</dt><dd id="event-date"></dd></div>
+        <div><dt>時間</dt><dd id="event-time"></dd></div>
+        <div><dt>地點</dt><dd id="event-place"></dd></div>
+        <div><dt>參與人員</dt><dd id="event-people"></dd></div>
+      </dl>
+    </div>
+    <div class="hero-art" aria-hidden="true">
+      <img src="images/dragonfly.png" class="art-dragonfly" alt="" />
+      <img src="images/grass.png" class="art-grass" alt="" />
+      <img src="images/picnic.png" class="art-picnic" alt="" />
+    </div>
+    <img src="images/bushes.png" class="art-bushes" alt="" aria-hidden="true" />
   </section>
 
-  <section class="info-grid">
-    <div class="card">
-      <h2 class="card-heading">活動流程</h2>
+  <div class="deadline-banner">
+    <span class="deadline-tag">重要</span>
+    <p>當天有公假、出差等原因不能來，請在 <strong class="reply-deadline"></strong>前上網回報。<br class="br-wide" />名單會在活動前三天交給處長。</p>
+  </div>
+
+  <section class="block">
+    <h2 class="block-title">活動流程</h2>
+    <div class="agenda-wrap">
       <ol class="agenda" id="agenda"></ol>
+      <img src="images/bench.png" class="art-bench" alt="" aria-hidden="true" />
     </div>
-    <div class="card">
-      <h2 class="card-heading">注意事項</h2>
-      <p class="list-label">請自己帶</p>
-      <ul class="chip-list" id="bring-items"></ul>
-      <p class="list-label">福委會準備</p>
-      <ul class="plain-list" id="provided-items"></ul>
+  </section>
+
+  <section class="block">
+    <h2 class="block-title">注意事項</h2>
+    <div class="info-grid">
+      <div class="card numbered">
+        <h3><span class="num num-green">1</span>請自己帶</h3>
+        <ul class="chip-list" id="bring-items"></ul>
+      </div>
+      <div class="card numbered">
+        <h3><span class="num num-orange">2</span>福委會準備</h3>
+        <ul class="plain-list" id="provided-items"></ul>
+        <img src="images/basket.png" class="art-basket" alt="" aria-hidden="true" />
+      </div>
     </div>
   </section>
 
   <section id="section-login" class="card login-card">
-    <h2 class="card-heading">登入後選組</h2>
-    <ul class="rule-list">
-      <li>這次活動預設全員參加，每組 <span class="group-cap"></span> 人。可以自己選一組，也可以由隊長先加入，再輸入隊友的帳號幫大家一起報名。</li>
-      <li>6 位主管之後會隨機分進各組，報名時不用算進去。</li>
-      <li>當天有公假、出差等原因不能來，請在 <strong class="reply-deadline"></strong>前回報，名單會在活動前三天交給處長。</li>
-      <li>福委會同仁當天是工作人員，不用選組。</li>
-    </ul>
+    <h2 class="block-title">登入後選組</h2>
+    <p class="login-note">這次活動預設全員參加，每組 <span class="group-cap"></span> 人。<br />可以自己選一組，也可以由隊長先加入，再輸入隊友的帳號幫大家一起報名。</p>
     <button id="btn-login" class="btn-primary btn-login">使用公司 Google 帳號登入</button>
   </section>
 
@@ -87,7 +101,7 @@
     </div>
 
     <div class="section-head">
-      <h2>選擇組別</h2>
+      <h2 class="block-title">選擇組別<img src="images/kid-ball.png" class="art-kid" alt="" aria-hidden="true" /></h2>
       <p class="muted">每組 <span class="group-cap"></span> 人，組員名單大家都看得到。加入後可以取隊名、幫隊友報名；想換組請先退出目前的組。</p>
     </div>
     <div class="groups-grid" id="group-cards"></div>
@@ -95,6 +109,6 @@
 
 </main>
 
-<script type="module" src="app.js?v=6"></script>
+<script type="module" src="app.js?v=7"></script>
 </body>
 </html>
