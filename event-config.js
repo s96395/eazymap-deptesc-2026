@@ -25,8 +25,8 @@ const GROUPS = Array.from({ length: 8 }, (_, i) => ({
 
 const AGENDA = [
   { title: "野餐準備", note: "領取餐盒、找位子鋪野餐墊" },
-  { title: "AA／周老師開場", note: "" },
-  { title: "YOYO 帶遊戲", note: "靈魂畫師、比手畫腳，以組為單位比賽" },
+  { title: "周老師開場", note: "" },
+  { title: "YOYO 帶遊戲", note: "靈魂畫師，以組為單位比賽" },
   { title: "頒獎", note: "總冠軍組獎金 1,000 元" },
   { title: "自由時間", note: "聊天、吃東西、拍照" }
 ];
