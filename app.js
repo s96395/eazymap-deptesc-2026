@@ -82,7 +82,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function renderEventInfo() {
   $("#event-name").textContent = EVENT.name;
-  $("#event-slogan").textContent = EVENT.slogan;
+  // 標語裡的「易」「圖」跟簡報一樣用色塊標出來
+  $("#event-slogan").innerHTML = esc(EVENT.slogan)
+    .replace(/^易/, `<b class="hl">易</b>`)
+    .replace("，圖", `，<b class="hl">圖</b>`);
+  $("#event-people").textContent = EVENT.people;
   $("#event-date").textContent = EVENT.date;
   $("#event-time").textContent = EVENT.time;
   $("#event-place").textContent = EVENT.place;

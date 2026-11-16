@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // 組數、每組上限、信箱網域有改時，記得同步修改 event-config.js
-    function groupCapacity() { return 7; }
+    function groupCapacity() { return 8; }
 
     function validGroup(groupId) {
       return groupId in [

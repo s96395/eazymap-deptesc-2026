@@ -10,13 +10,14 @@ const EVENT = {
   date: "2026 年 12 月 4 日（五）",
   time: "15:00–17:00",
   place: "逢甲草皮或綠美圖草皮（確定後另行通知）",
+  people: "周老師、各處處長（代表）、福委會成員及空資處全體同仁",
   replyDeadline: "11 月 30 日（一）",
   staffCount: 50   // 需要選組的同仁人數（不含主管、周老師、福委）
 };
 
-// 同仁 50 人分 8 組，每組先開 7 個名額；
-// 6 位主管之後隨機分進各組，每組最後約 7–8 人。
-const GROUP_CAPACITY = 7;
+// 同仁 50 人分 8 組，每組上限 8 人；
+// 6 位主管之後隨機分進各組。
+const GROUP_CAPACITY = 8;
 const GROUPS = Array.from({ length: 8 }, (_, i) => ({
   id: `group-${i + 1}`,
   name: `第 ${i + 1} 組`
@@ -24,8 +25,8 @@ const GROUPS = Array.from({ length: 8 }, (_, i) => ({
 
 const AGENDA = [
   { title: "野餐準備", note: "領取餐盒、找位子鋪野餐墊" },
-  { title: "AA／周老師開場", note: "" },
-  { title: "YOYO 帶遊戲", note: "靈魂畫師、比手畫腳，以組為單位比賽" },
+  { title: "周老師開場", note: "" },
+  { title: "YOYO 帶遊戲", note: "靈魂畫師，以組為單位比賽" },
   { title: "頒獎", note: "總冠軍組獎金 1,000 元" },
   { title: "自由時間", note: "聊天、吃東西、拍照" }
 ];
