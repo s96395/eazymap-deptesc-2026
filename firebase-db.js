@@ -53,13 +53,13 @@ function onAuthChange(callback) { return onAuthStateChanged(auth, callback); }
 
 // ---- 即時監聽 ----
 
-/** 各組資料：{ groupId: { count, teamName } } */
+/** 各組資料：{ groupId: { count, teamName, teamNameBy } } */
 function onGroupsChange(callback) {
   return onSnapshot(collection(db, GROUPS_COL), (snapshot) => {
     const groups = {};
     snapshot.forEach((d) => {
       const data = d.data();
-      groups[d.id] = { count: Number(data.count) || 0, teamName: data.teamName || "" };
+      groups[d.id] = { count: Number(data.count) || 0, teamName: data.teamName || "", teamNameBy: data.teamNameBy || "" };
     });
     callback(groups);
   });
