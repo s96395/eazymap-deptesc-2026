@@ -10,17 +10,18 @@
   --bg: #fbf6ea;
   --card: #ffffff;
   --text: #2b3a2e;
-  --muted: #6b7568;
+  --muted: #5f6a5c;   /* 在米白底上對比 5.2:1 */
   --line: #ece4d2;
   --green: #2f6b3a;
   --green-deep: #026635;
   --green-mid: #4e9a4a;
   --green-soft: #dcebcb;
   --teal: #60a183;
-  --orange: #e8613f;
+  --orange: #c4502f;  /* 比簡報略深，白字對比 4.6:1 才夠清楚 */
   --orange-soft: #f8e3d5;
   --yellow: #f5b83d;
-  --gold: #da960b;
+  --gold: #a8740a;
+  --gold-bright: #da960b;
   --shadow: 0 4px 16px rgba(80, 60, 20, 0.08);
   --radius: 14px;
 }
@@ -53,6 +54,7 @@ main {
 }
 
 /* ---- 頁首 ---- */
+html { scroll-padding-top: 80px; }
 .site-header {
   position: sticky;
   top: 0;
@@ -108,10 +110,18 @@ button { font: inherit; cursor: pointer; }
 .btn-text {
   background: none; border: 0;
   color: var(--orange);
-  font-size: 14px;
-  padding: 2px 6px;
+  font-size: 15px;
+  font-weight: 700;
+  min-height: 36px;
+  padding: 4px 10px;
+  border-radius: 6px;
 }
 .btn-text:hover { text-decoration: underline; }
+/* 用鍵盤操作時看得到目前位置 */
+a:focus-visible, button:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 2px;
+}
 button:disabled { opacity: 0.55; cursor: not-allowed; }
 
 /* ---- 共用卡片與標題 ---- */
@@ -176,7 +186,7 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   letter-spacing: 0.06em;
 }
 .hero-slogan .hl { font-size: 1.45em; font-weight: 900; color: var(--orange); line-height: 1; }
-.hero-slogan .hl + .hl, .hero-slogan .hl:last-of-type { color: var(--gold); }
+.hero-slogan .hl + .hl, .hero-slogan .hl:last-of-type { color: var(--gold-bright); }
 .hero-slogan .hl:first-of-type { color: var(--orange); }
 .event-facts { margin-top: 26px; display: flex; flex-direction: column; gap: 12px; }
 .event-facts div { display: flex; align-items: flex-start; gap: 14px; }
@@ -359,7 +369,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid rgba(47, 107, 58,
 .group-count { font-variant-numeric: tabular-nums; font-weight: 700; color: #e5f0dc; }
 .group-mine { outline: 3px solid var(--yellow); }
 .group-mine .group-head { background: var(--orange); }
-.group-full .group-head { background: #9aa596; }
+.group-full .group-head { background: #6d7a69; }
 .team-name { font-weight: 900; color: var(--orange); margin-top: 2px; }
 .team-name-empty { color: var(--muted); font-weight: 400; font-size: 14px; }
 .slots { display: flex; gap: 4px; }
@@ -367,15 +377,16 @@ input:focus, select:focus, textarea:focus { outline: 2px solid rgba(47, 107, 58,
 .slot-filled { background: var(--teal); }
 .member-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
 .member-list li { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-.member-list small { display: block; font-size: 12px; }
+.member-list small { display: block; font-size: 13px; }
 .me-tag {
   font-style: normal;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 700;
   margin-left: 6px;
   padding: 0 6px;
   border-radius: 4px;
   background: var(--yellow);
-  color: #fff;
+  color: var(--text);
 }
 .inline-form { display: flex; flex-direction: column; gap: 4px; padding-top: 10px; border-top: 1px dashed var(--line); }
 .inline-form label { font-size: 14px; font-weight: 700; color: var(--green); }
@@ -395,7 +406,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid rgba(47, 107, 58,
 .email-input .email-domain { color: var(--muted); font-size: 13px; white-space: nowrap; }
 /* 幫隊友報名：輸入框占滿整行，避免卡片太窄時被網域文字擠到看不見 */
 .add-member-form { gap: 6px; }
-.add-member-form .hint { color: var(--muted); font-size: 12px; margin-top: -2px; }
+.add-member-form .hint { color: var(--muted); font-size: 13px; margin-top: -2px; }
 .add-member-form .btn-primary { width: 100%; }
 .group-foot .btn-primary { width: 100%; }
 .badge {
@@ -408,8 +419,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid rgba(47, 107, 58,
   background: var(--bg);
 }
 .group-foot .badge { width: 100%; text-align: center; padding: 8px; }
-.badge-mine { color: var(--orange); background: #fff; padding: 0 8px; font-size: 12px; }
-.badge-full { color: var(--orange); background: var(--orange-soft); }
+.badge-mine { color: var(--orange); background: #fff; padding: 0 8px; font-size: 13px; }
+.badge-full { color: #8a3a22; background: var(--orange-soft); }
 
 /* ---- 後台 ---- */
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
@@ -480,3 +491,6 @@ tr:last-child td { border-bottom: 0; }
   .status-actions, .status-actions button { width: 100%; }
   .status-actions { flex-direction: column; }
 }
+
+/* ---- 未選組時的主要動作 ---- */
+.status-actions .btn-go { min-height: 44px; }

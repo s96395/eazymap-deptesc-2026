@@ -72,7 +72,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  $("#btn-login").addEventListener("click", loginWithGoogle);
+  // 按登入後直接捲到「我的狀態」，不用自己往下找
+  $("#btn-login").addEventListener("click", async () => {
+    try {
+      await loginWithGoogle();
+      setTimeout(() => $("#my-status")?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+    } catch (err) { console.error(err); }
+  });
   $("#btn-logout").addEventListener("click", logout);
   $("#absence-form").addEventListener("submit", handleAbsenceSubmit);
   $("#btn-absence-cancel").addEventListener("click", () => toggleAbsenceForm(false));
@@ -170,8 +176,10 @@ function renderStatus() {
       <p class="muted">請從下方挑一組加入。當天不能來的話，請在 ${esc(EVENT.replyDeadline)}前回報。</p>
     </div>
     <div class="status-actions">
-      <button id="btn-open-absence" class="btn-outline">我不能參加</button>
+      <button id="btn-go-groups" class="btn-primary btn-go">去選組</button>
+      <button id="btn-open-absence" class="btn-outline btn-go">我不能參加</button>
     </div>`;
+  $("#btn-go-groups").addEventListener("click", () => $("#groups-head").scrollIntoView({ behavior: "smooth", block: "start" }));
   $("#btn-open-absence").addEventListener("click", () => toggleAbsenceForm(true));
 }
 
@@ -218,9 +226,9 @@ function renderGroups() {
 
     const mineTools = isMine ? `
       <form class="inline-form team-name-form" data-group="${g.id}">
-        <label>隊名</label>
+        <label for="team-${g.id}">隊名</label>
         <div class="inline-row">
-          <input name="team-${g.id}" type="text" maxlength="20" placeholder="20 字以內" value="${esc(teamName)}" />
+          <input id="team-${g.id}" name="team-${g.id}" type="text" maxlength="20" placeholder="20 字以內" value="${esc(teamName)}" />
           <button type="submit" class="btn-outline">${teamName ? "修改" : "儲存"}</button>
         </div>
       </form>
@@ -375,9 +383,10 @@ function showToast(msg, isError = false) {
   $("#toast")?.remove();
   const toast = document.createElement("div");
   toast.id = "toast";
+  toast.setAttribute("role", isError ? "alert" : "status");
   toast.className = `toast ${isError ? "toast-error" : "toast-success"}`;
   toast.textContent = msg;
   document.body.appendChild(toast);
   setTimeout(() => toast.classList.add("toast-show"), 10);
-  setTimeout(() => { toast.classList.remove("toast-show"); setTimeout(() => toast.remove(), 300); }, 3000);
+  setTimeout(() => { toast.classList.remove("toast-show"); setTimeout(() => toast.remove(), 300); }, isError ? 5000 : 3000);
 }

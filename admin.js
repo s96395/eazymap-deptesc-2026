@@ -209,9 +209,10 @@ function showToast(msg, isError = false) {
   $("#toast")?.remove();
   const toast = document.createElement("div");
   toast.id = "toast";
+  toast.setAttribute("role", isError ? "alert" : "status");
   toast.className = `toast ${isError ? "toast-error" : "toast-success"}`;
   toast.textContent = msg;
   document.body.appendChild(toast);
   setTimeout(() => toast.classList.add("toast-show"), 10);
-  setTimeout(() => { toast.classList.remove("toast-show"); setTimeout(() => toast.remove(), 300); }, 3000);
+  setTimeout(() => { toast.classList.remove("toast-show"); setTimeout(() => toast.remove(), 300); }, isError ? 5000 : 3000);
 }
