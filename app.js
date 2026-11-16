@@ -226,14 +226,10 @@ function renderGroups() {
       </form>
       ${full ? `<p class="muted small">這組已經滿了。</p>` : `
       <form class="inline-form add-member-form" data-group="${g.id}">
-        <label>幫隊友報名（還有 ${remaining} 個位子）</label>
-        <div class="inline-row">
-          <div class="email-input">
-            <input name="add-${g.id}" type="text" placeholder="帳號" autocomplete="off" autocapitalize="off" spellcheck="false" />
-            <span class="email-domain">@${esc(EMAIL_DOMAIN)}</span>
-          </div>
-          <button type="submit" class="btn-primary">加入</button>
-        </div>
+        <label for="add-${g.id}">幫隊友報名（還有 ${remaining} 個位子）</label>
+        <input id="add-${g.id}" name="add-${g.id}" type="text" placeholder="輸入隊友帳號，例如 yoyoshen" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        <p class="hint">只要打信箱 @ 前面，系統會自動補上 @${esc(EMAIL_DOMAIN)}</p>
+        <button type="submit" class="btn-primary">幫他報名</button>
       </form>`}` : "";
 
     return `

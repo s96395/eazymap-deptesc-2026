@@ -393,6 +393,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid rgba(47, 107, 58,
 .email-input input:focus { outline: none; }
 .email-input:focus-within { border-color: var(--green); outline: 2px solid rgba(47, 107, 58, 0.3); }
 .email-input .email-domain { color: var(--muted); font-size: 13px; white-space: nowrap; }
+/* 幫隊友報名：輸入框占滿整行，避免卡片太窄時被網域文字擠到看不見 */
+.add-member-form { gap: 6px; }
+.add-member-form .hint { color: var(--muted); font-size: 12px; margin-top: -2px; }
+.add-member-form .btn-primary { width: 100%; }
 .group-foot .btn-primary { width: 100%; }
 .badge {
   display: inline-block;
