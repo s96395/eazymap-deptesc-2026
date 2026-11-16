@@ -97,6 +97,14 @@ function renderStats() {
     ${notReady ? `<p class="card warning">組別還沒建立，同仁目前無法選組。請到「設定」按一次「建立組別並重新計算」。</p>` : ""}`;
 }
 
+/** 隊名是誰取的：用信箱找組員姓名，找不到就顯示帳號 */
+function namerOf(groupId) {
+  const email = groupData[groupId]?.teamNameBy;
+  if (!email) return "";
+  const member = joins.find((j) => j.email === email);
+  return member?.displayName || accountOf(email);
+}
+
 function renderGroups() {
   $("#admin-groups").innerHTML = GROUPS.map((g) => {
     const members = joins.filter((j) => j.groupId === g.id).sort(byTime);
@@ -109,7 +117,7 @@ function renderGroups() {
           <h3>${esc(g.name)}</h3>
           <span class="group-count">${members.length} / ${GROUP_CAPACITY}</span>
         </div>
-        <p class="team-name ${teamName ? "" : "team-name-empty"}">${teamName ? esc(teamName) : "還沒取隊名"}</p>
+        <p class="team-name ${teamName ? "" : "team-name-empty"}">${teamName ? `${esc(teamName)}<small class="team-namer">${esc(namerOf(g.id))} 取的</small>` : "還沒取隊名"}</p>
         ${mismatch ? `<p class="small warning-text">人數紀錄是 ${count}，跟名單對不起來，請到「設定」重新計算。</p>` : ""}
         <ul class="member-list">
           ${members.length ? members.map((m) => `
@@ -188,6 +196,7 @@ function exportGroups() {
       rows.push([
         g.name,
         groupData[g.id]?.teamName || "",
+        groupData[g.id]?.teamName ? namerOf(g.id) : "",
         m.displayName || "",
         m.email,
         m.addedBy && m.addedBy !== m.email ? accountOf(m.addedBy) : "",
@@ -195,7 +204,7 @@ function exportGroups() {
       ]);
     });
   });
-  downloadCSV(`野餐日分組名單_${today()}.csv`, ["組別", "隊名", "姓名", "信箱", "代報人", "報名時間"], rows);
+  downloadCSV(`野餐日分組名單_${today()}.csv`, ["組別", "隊名", "隊名取名人", "姓名", "信箱", "代報人", "報名時間"], rows);
 }
 
 function exportAbsences() {

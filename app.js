@@ -109,6 +109,15 @@ function renderEventInfo() {
 
 // ---- 畫面 ----
 
+/** 隊名是誰取的：用信箱找組員姓名，找不到就顯示帳號 */
+function namerOf(groupId) {
+  const email = groupData[groupId]?.teamNameBy;
+  if (!email) return "";
+  const member = joins.find((j) => j.email === email);
+  return member?.displayName || accountOf(email);
+}
+
+
 function myJoin() {
   return joins.find((j) => j.email === myEmail) || null;
 }
@@ -246,7 +255,7 @@ function renderGroups() {
           <h3>${esc(g.name)}${isMine ? `<span class="badge badge-mine">我的組</span>` : ""}</h3>
           <span class="group-count">${count} / ${GROUP_CAPACITY}</span>
         </div>
-        <p class="team-name ${teamName ? "" : "team-name-empty"}">${teamName ? esc(teamName) : "還沒取隊名"}</p>
+        <p class="team-name ${teamName ? "" : "team-name-empty"}">${teamName ? `${esc(teamName)}<small class="team-namer">${esc(namerOf(g.id))} 取的</small>` : "還沒取隊名"}</p>
         <div class="slots" aria-hidden="true">${slots}</div>
         <ul class="member-list">${memberItems}</ul>
         ${mineTools}
