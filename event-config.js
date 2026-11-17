@@ -48,7 +48,8 @@ const EMAIL_DOMAIN = "gis.fcu.edu.tw";
 const ADMIN_EMAILS = [
   "yoyoshen@gis.fcu.edu.tw",
   "irishuang@gis.fcu.edu.tw",
-  "clarachou@gis.fcu.edu.tw"
+  "clarachou@gis.fcu.edu.tw",
+  "aaronhsu@gis.fcu.edu.tw"
 ];
 
 export { EVENT, GROUP_CAPACITY, GROUPS, AGENDA, BRING_ITEMS, PROVIDED_ITEMS, ABSENCE_REASONS, EMAIL_DOMAIN, ADMIN_EMAILS };
