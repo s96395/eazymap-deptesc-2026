@@ -495,3 +495,16 @@ tr:last-child td { border-bottom: 0; }
 
 /* ---- 未選組時的主要動作 ---- */
 .status-actions .btn-go { min-height: 44px; }
+
+/* ---- 報名截止與後台調整 ---- */
+.lock-note { margin-bottom: 16px; font-weight: 700; color: var(--green-deep); background: var(--green-soft); border-left: 6px solid var(--green); }
+.lock-note.lock-open { color: var(--text); background: #fff8e6; border-left-color: var(--gold-bright); }
+.admin-member { flex-wrap: wrap; }
+.admin-member-tools { display: flex; align-items: center; gap: 8px; }
+.admin-member-tools select { width: auto; padding: 4px 6px; font-size: 14px; }
+.admin-absence-form { display: grid; grid-template-columns: 1fr 1fr 2fr auto; gap: 10px; align-items: end; margin-top: 10px; }
+.admin-absence-form label { display: block; font-size: 14px; font-weight: 700; color: var(--green); margin-bottom: 4px; }
+@media (max-width: 720px) {
+  .admin-absence-form { grid-template-columns: 1fr; }
+  .table-wrap table { min-width: 600px; }
+}

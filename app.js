@@ -18,7 +18,7 @@ import {
   withdrawAbsence
 } from "./firebase-db.js";
 import {
-  EVENT, GROUP_CAPACITY, GROUPS, AGENDA, BRING_ITEMS, PROVIDED_ITEMS, ABSENCE_REASONS, EMAIL_DOMAIN
+  isLocked, EVENT, GROUP_CAPACITY, GROUPS, AGENDA, BRING_ITEMS, PROVIDED_ITEMS, ABSENCE_REASONS, EMAIL_DOMAIN
 } from "./event-config.js";
 
 let currentUser = null;
@@ -82,7 +82,21 @@ document.addEventListener("DOMContentLoaded", () => {
   $("#btn-logout").addEventListener("click", logout);
   $("#absence-form").addEventListener("submit", handleAbsenceSubmit);
   $("#btn-absence-cancel").addEventListener("click", () => toggleAbsenceForm(false));
+
+  // 頁面開著跨過截止時間時，自動切成截止畫面
+  const msLeft = new Date(EVENT.lockAt).getTime() - Date.now();
+  if (msLeft > 0 && msLeft < 2 ** 31 - 1) setTimeout(() => { applyLockNotice(); render(); }, msLeft + 1000);
+  applyLockNotice();
 });
+
+/** 截止後把首頁提醒和選組說明換成截止的文字 */
+function applyLockNotice() {
+  if (!isLocked()) return;
+  $("#deadline-text").innerHTML = `報名已於 <strong>${esc(EVENT.replyDeadline)}</strong>截止，現在不能再自己選組或修改。<br class="br-wide" />名單需要調整的話，請聯絡福委會。`;
+  $("#groups-title").textContent = "分組名單";
+  $("#groups-note").textContent = "報名已截止，以下是最後的分組名單。需要調整請聯絡福委會。";
+  toggleAbsenceForm(false);
+}
 
 // ---- 活動資訊 ----
 
@@ -140,6 +154,8 @@ function render() {
 function renderStatus() {
   const el = $("#my-status");
   const join = myJoin();
+  const locked = isLocked();
+  const lockNote = `<p class="muted">報名已截止，要調整請聯絡福委會。</p>`;
 
   if (join) {
     const group = GROUPS.find((g) => g.id === join.groupId);
@@ -151,11 +167,12 @@ function renderStatus() {
         <p class="status-label">我的狀態</p>
         <p class="status-main">已加入 <strong>${esc(group?.name || join.groupId)}</strong>${teamName ? `「${esc(teamName)}」` : ""}</p>
         <p class="muted">${byOther ? `由 ${esc(join.addedByName || accountOf(join.addedBy))} 幫你報名。` : ""}當天記得帶筆、野餐墊和想吃的東西。</p>
+        ${locked ? lockNote : ""}
       </div>
-      <div class="status-actions">
+      ${locked ? "" : `<div class="status-actions">
         <button id="btn-leave" class="btn-outline">退出這組</button>
-      </div>`;
-    $("#btn-leave").addEventListener("click", () => handleRemove(myEmail, true));
+      </div>`}`;
+    $("#btn-leave")?.addEventListener("click", () => handleRemove(myEmail, true));
     toggleAbsenceForm(false);
     return;
   }
@@ -167,13 +184,25 @@ function renderStatus() {
         <p class="status-label">我的狀態</p>
         <p class="status-main">已回報不能參加</p>
         <p class="muted">原因：${esc(myAbsence.reasonType)}${myAbsence.reasonNote ? `（${esc(myAbsence.reasonNote)}）` : ""}</p>
+        ${locked ? lockNote : ""}
       </div>
-      <div class="status-actions">
+      ${locked ? "" : `<div class="status-actions">
         <button id="btn-edit-absence" class="btn-outline">修改原因</button>
         <button id="btn-withdraw" class="btn-primary">改成可以參加</button>
+      </div>`}`;
+    $("#btn-edit-absence")?.addEventListener("click", () => toggleAbsenceForm(true));
+    $("#btn-withdraw")?.addEventListener("click", handleWithdraw);
+    return;
+  }
+
+  if (locked) {
+    el.className = "card status-card";
+    el.innerHTML = `
+      <div>
+        <p class="status-label">我的狀態</p>
+        <p class="status-main">沒有選組，也沒有回報不能參加</p>
+        <p class="muted">報名已截止，請聯絡福委會幫你安排組別或登記不能參加。</p>
       </div>`;
-    $("#btn-edit-absence").addEventListener("click", () => toggleAbsenceForm(true));
-    $("#btn-withdraw").addEventListener("click", handleWithdraw);
     return;
   }
 
@@ -195,6 +224,7 @@ function renderStatus() {
 function renderGroups() {
   const container = $("#group-cards");
   const join = myJoin();
+  const locked = isLocked();
 
   // 重畫前記住輸入框內容，避免別人報名時打到一半的字被清掉
   const drafts = {};
@@ -213,7 +243,7 @@ function renderGroups() {
 
     // 已經有組的人，其他組卡片就不放按鈕，畫面比較乾淨
     let action = "";
-    if (join) action = "";
+    if (join || locked) action = "";
     else if (myAbsence) action = `<span class="badge">已回報不能參加</span>`;
     else if (full) action = `<span class="badge badge-full">已額滿</span>`;
     else action = `<button class="btn-primary btn-join" data-group="${g.id}">加入這組</button>`;
@@ -224,7 +254,7 @@ function renderGroups() {
     const memberItems = members.length
       ? members.map((m) => {
           const isMe = m.email === myEmail;
-          const canRemove = isMine && !isMe && m.addedBy === myEmail;
+          const canRemove = !locked && isMine && !isMe && m.addedBy === myEmail;
           return `
             <li>
               <span>${esc(m.displayName || accountOf(m.email))}${isMe ? `<em class="me-tag">我</em>` : ""}</span>
@@ -233,7 +263,7 @@ function renderGroups() {
         }).join("")
       : `<li class="muted">還沒有人</li>`;
 
-    const mineTools = isMine ? `
+    const mineTools = isMine && !locked ? `
       <form class="inline-form team-name-form" data-group="${g.id}">
         <label for="team-${g.id}">隊名</label>
         <div class="inline-row">
@@ -276,6 +306,7 @@ function renderGroups() {
 }
 
 function toggleAbsenceForm(show) {
+  if (isLocked()) show = false;
   const wrap = $("#absence-form-wrap");
   wrap.classList.toggle("hidden", !show);
   if (show) {

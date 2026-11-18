@@ -19,6 +19,10 @@ service cloud.firestore {
       return reasonType in ['公假', '出差', '請假', '客戶會議或外部行程', '其他'];
     }
 
+    // 報名截止：2026-11-26 00:00（台灣時間）起，同仁不能再改，只有管理員可以調整。
+    // 改時間時，event-config.js 的 lockAt 也要一起改。
+    function isOpen() { return request.time < timestamp.value(1795622400000); }
+
     function isSignedIn() { return request.auth != null; }
     function myEmail() { return request.auth.token.email.lower(); }
 
@@ -89,7 +93,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isAdmin() && validGroupDoc(groupId);
       allow update: if isSignedIn() && validGroupDoc(groupId) &&
-        (isAdmin() || memberAdded(groupId) || memberRemoved(groupId) || memberRenames(groupId));
+        (isAdmin() || (isOpen() && (memberAdded(groupId) || memberRemoved(groupId) || memberRenames(groupId))));
       allow delete: if false;
     }
 
@@ -98,7 +102,7 @@ service cloud.firestore {
     match /picnicJoins/{email} {
       allow read: if isSignedIn();
 
-      // 本人可以報名自己；已在組裡的人可以把隊友加進同一組
+      // 本人可以報名自己；已在組裡的人可以把隊友加進同一組；管理員可以把任何人加進任何一組
       allow create: if isSignedIn() &&
         companyEmail(email) &&
         request.resource.data.keys().hasOnly(['email', 'displayName', 'groupId', 'addedBy', 'addedByName', 'createdAt']) &&
@@ -109,8 +113,10 @@ service cloud.firestore {
         request.resource.data.addedBy == myEmail() &&
         request.resource.data.addedByName is string &&
         validGroup(request.resource.data.groupId) &&
-        (email == myEmail() || isMemberOf(request.resource.data.groupId)) &&
-        !exists(absencePath(email)) &&
+        ((isAdmin() && !existsAfter(absencePath(email))) ||
+          (isOpen() &&
+            (email == myEmail() || isMemberOf(request.resource.data.groupId)) &&
+            !exists(absencePath(email)))) &&
         // 每次只能加一個人：組別的 lastChange 必須是這筆資料本身
         getAfter(groupPath(request.resource.data.groupId)).data.lastChange == email &&
         getAfter(groupPath(request.resource.data.groupId)).data.count ==
@@ -123,10 +129,16 @@ service cloud.firestore {
         request.resource.data.displayName.size() > 0 &&
         request.resource.data.displayName.size() <= 30;
 
+      // 管理員把人換到別組（人數在同一個 transaction 裡由管理員一起更新）
+      allow update: if isAdmin() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['groupId']) &&
+        validGroup(request.resource.data.groupId);
+
       // 本人退出、代報的人移除自己加的隊友、管理員刪除
       allow delete: if isSignedIn() && (
         isAdmin() ||
-        ((email == myEmail() || resource.data.addedBy == myEmail()) &&
+        (isOpen() &&
+          (email == myEmail() || resource.data.addedBy == myEmail()) &&
           getAfter(groupPath(resource.data.groupId)).data.lastChange == email &&
           getAfter(groupPath(resource.data.groupId)).data.count ==
             get(groupPath(resource.data.groupId)).data.count - 1)
@@ -137,7 +149,8 @@ service cloud.firestore {
 
     match /picnicAbsences/{email} {
       allow read: if isSignedIn() && (email == myEmail() || isAdmin());
-      allow create, update: if isSignedIn() && email == myEmail() &&
+      // 本人在截止前回報；管理員隨時可以幫人登記（會在同一個 transaction 裡把他移出組別）
+      allow create, update: if isSignedIn() &&
         companyEmail(email) &&
         request.resource.data.keys().hasOnly(['email', 'displayName', 'reasonType', 'reasonNote', 'createdAt', 'updatedAt']) &&
         request.resource.data.email == email &&
@@ -145,8 +158,9 @@ service cloud.firestore {
         validReason(request.resource.data.reasonType) &&
         request.resource.data.reasonNote is string &&
         request.resource.data.reasonNote.size() <= 200 &&
-        !exists(joinPath(email));
-      allow delete: if isSignedIn() && (email == myEmail() || isAdmin());
+        ((isAdmin() && !existsAfter(joinPath(email))) ||
+          (isOpen() && email == myEmail() && !exists(joinPath(email))));
+      allow delete: if isSignedIn() && (isAdmin() || (isOpen() && email == myEmail()));
     }
   }
 }
