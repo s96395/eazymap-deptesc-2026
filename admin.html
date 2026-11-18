@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=9" />
+  <link rel="stylesheet" href="style.css?v=10" />
 </head>
 <body>
 
@@ -44,6 +44,8 @@
       <p class="muted" id="admin-event"></p>
     </div>
 
+    <p class="card lock-note" id="lock-note"></p>
+
     <div class="stats" id="stats"></div>
 
     <div class="tabs">
@@ -54,7 +56,7 @@
 
     <div id="panel-groups" class="tab-panel">
       <div class="toolbar">
-        <p class="muted">每組 <span class="group-cap"></span> 人，主管之後再隨機分配。</p>
+        <p class="muted">每組 <span class="group-cap"></span> 人。可以在各組卡片裡加人、換組、刪除或改隊名。</p>
         <button id="btn-export-groups" class="btn-primary">匯出分組名單 CSV</button>
       </div>
       <div class="groups-grid" id="admin-groups"></div>
@@ -62,8 +64,27 @@
 
     <div id="panel-absent" class="tab-panel hidden">
       <div class="toolbar">
-        <p class="muted">請在活動前三天把這份名單交給處長。</p>
+        <p class="muted">報名截止後請把這份名單交給處長。</p>
         <button id="btn-export-absent" class="btn-primary">匯出不能參加名單 CSV</button>
+      </div>
+      <div class="card">
+        <h3 class="card-heading">幫同仁登記不能參加</h3>
+        <p class="muted">如果他已經在組裡，會一起移出組別。已經登記過的人再送一次就是修改原因。</p>
+        <form id="admin-absence-form" class="admin-absence-form">
+          <div>
+            <label for="aa-account">帳號</label>
+            <input id="aa-account" type="text" placeholder="例如 yoyoshen" autocomplete="off" autocapitalize="off" spellcheck="false" required />
+          </div>
+          <div>
+            <label for="aa-type">原因</label>
+            <select id="aa-type"></select>
+          </div>
+          <div class="aa-note">
+            <label for="aa-note">說明（選填）</label>
+            <input id="aa-note" type="text" maxlength="200" />
+          </div>
+          <button type="submit" class="btn-primary">登記</button>
+        </form>
       </div>
       <div class="card table-wrap">
         <table>
@@ -86,6 +107,6 @@
 
 </main>
 
-<script type="module" src="admin.js?v=9"></script>
+<script type="module" src="admin.js?v=10"></script>
 </body>
 </html>

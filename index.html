@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=9" />
+  <link rel="stylesheet" href="style.css?v=10" />
 </head>
 <body>
 
@@ -47,7 +47,7 @@
 
   <div class="deadline-banner">
     <span class="deadline-tag">重要</span>
-    <p>當天有公假、出差等原因不能來，請在 <strong class="reply-deadline"></strong>前上網回報。<br class="br-wide" />名單會在活動前三天交給處長。</p>
+    <p id="deadline-text">報名截止日：<strong class="reply-deadline"></strong><br class="br-wide" />請在這天前選好組別；當天有公假、出差等原因不能來，也請在這天前上網回報，報名截止後名單會交給處長。</p>
   </div>
 
   <section class="block">
@@ -101,14 +101,14 @@
     </div>
 
     <div class="section-head" id="groups-head">
-      <h2 class="block-title">選擇組別<img src="images/kid-ball.png" class="art-kid" alt="" aria-hidden="true" /></h2>
-      <p class="muted">每組 <span class="group-cap"></span> 人，組員名單大家都看得到。加入後可以取隊名、幫隊友報名；想換組請先退出目前的組。</p>
+      <h2 class="block-title"><span id="groups-title">選擇組別</span><img src="images/kid-ball.png" class="art-kid" alt="" aria-hidden="true" /></h2>
+      <p class="muted" id="groups-note">每組 <span class="group-cap"></span> 人，組員名單大家都看得到。加入後可以取隊名、幫隊友報名；想換組請先退出目前的組。</p>
     </div>
     <div class="groups-grid" id="group-cards"></div>
   </section>
 
 </main>
 
-<script type="module" src="app.js?v=9"></script>
+<script type="module" src="app.js?v=11"></script>
 </body>
 </html>

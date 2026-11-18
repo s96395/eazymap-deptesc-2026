@@ -194,7 +194,101 @@ async function withdrawAbsence(email) {
   await deleteDoc(doc(db, ABSENCES_COL, normEmail(email)));
 }
 
-// ---- 管理員 ----
+// ---- 管理員（報名截止後也能調整） ----
+
+/** 管理員把某人加進某組；他如果回報過不能參加，回報會一起刪掉 */
+async function adminAddMember(admin, email, groupId, capacity) {
+  const memberEmail = normEmail(email);
+  const joinRef = doc(db, JOINS_COL, memberEmail);
+  const absenceRef = doc(db, ABSENCES_COL, memberEmail);
+  const groupRef = doc(db, GROUPS_COL, groupId);
+
+  await runTransaction(db, async (tx) => {
+    const [joinSnap, absenceSnap, groupSnap] = await Promise.all([tx.get(joinRef), tx.get(absenceRef), tx.get(groupRef)]);
+    if (joinSnap.exists()) throw new Error("MEMBER_TAKEN");
+    if (!groupSnap.exists()) throw new Error("NOT_READY");
+    const count = Number(groupSnap.data().count) || 0;
+    if (count + 1 > capacity) throw new Error("FULL");
+
+    if (absenceSnap.exists()) tx.delete(absenceRef);
+    tx.update(groupRef, { count: count + 1, lastChange: memberEmail });
+    tx.set(joinRef, {
+      email: memberEmail,
+      displayName: (absenceSnap.exists() && absenceSnap.data().displayName) || memberEmail.split("@")[0],
+      groupId,
+      addedBy: normEmail(admin.email),
+      addedByName: admin.displayName || "",
+      createdAt: serverTimestamp()
+    });
+  });
+}
+
+/** 管理員把某人換到別組 */
+async function moveMember(email, toGroupId, capacity) {
+  const memberEmail = normEmail(email);
+  const joinRef = doc(db, JOINS_COL, memberEmail);
+
+  await runTransaction(db, async (tx) => {
+    const joinSnap = await tx.get(joinRef);
+    if (!joinSnap.exists()) throw new Error("NOT_FOUND");
+    const fromGroupId = joinSnap.data().groupId;
+    if (fromGroupId === toGroupId) return;
+
+    const fromRef = doc(db, GROUPS_COL, fromGroupId);
+    const toRef = doc(db, GROUPS_COL, toGroupId);
+    const [fromSnap, toSnap] = await Promise.all([tx.get(fromRef), tx.get(toRef)]);
+    if (!toSnap.exists()) throw new Error("NOT_READY");
+    const toCount = Number(toSnap.data().count) || 0;
+    if (toCount + 1 > capacity) throw new Error("FULL");
+    const fromCount = Math.max(0, (fromSnap.exists() ? Number(fromSnap.data().count) || 0 : 1) - 1);
+
+    tx.update(fromRef, fromCount === 0
+      ? { count: 0, lastChange: memberEmail, teamName: "", teamNameBy: "" }
+      : { count: fromCount, lastChange: memberEmail });
+    tx.update(toRef, { count: toCount + 1, lastChange: memberEmail });
+    tx.update(joinRef, { groupId: toGroupId });
+  });
+}
+
+/** 管理員幫某人登記不能參加；他如果在組裡會一起移出 */
+async function adminReportAbsence(email, reasonType, reasonNote) {
+  const memberEmail = normEmail(email);
+  const joinRef = doc(db, JOINS_COL, memberEmail);
+  const absenceRef = doc(db, ABSENCES_COL, memberEmail);
+
+  await runTransaction(db, async (tx) => {
+    const [joinSnap, absenceSnap] = await Promise.all([tx.get(joinRef), tx.get(absenceRef)]);
+    let displayName = absenceSnap.exists() ? absenceSnap.data().displayName || "" : "";
+
+    if (joinSnap.exists()) {
+      displayName = displayName || joinSnap.data().displayName || "";
+      const groupRef = doc(db, GROUPS_COL, joinSnap.data().groupId);
+      const groupSnap = await tx.get(groupRef);
+      const nextCount = Math.max(0, (groupSnap.exists() ? Number(groupSnap.data().count) || 0 : 1) - 1);
+      tx.update(groupRef, nextCount === 0
+        ? { count: 0, lastChange: memberEmail, teamName: "", teamNameBy: "" }
+        : { count: nextCount, lastChange: memberEmail });
+      tx.delete(joinRef);
+    }
+
+    tx.set(absenceRef, {
+      email: memberEmail,
+      displayName: displayName || memberEmail.split("@")[0],
+      reasonType,
+      reasonNote,
+      createdAt: absenceSnap.exists() ? absenceSnap.data().createdAt : serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+  });
+}
+
+/** 管理員修改或清除隊名 */
+async function adminSetTeamName(admin, groupId, teamName) {
+  await updateDoc(doc(db, GROUPS_COL, groupId), {
+    teamName,
+    teamNameBy: teamName ? normEmail(admin.email) : ""
+  });
+}
 
 async function getAllJoins() {
   const snap = await getDocs(collection(db, JOINS_COL));
@@ -237,6 +331,10 @@ export {
   updateMyDisplayName,
   reportAbsence,
   withdrawAbsence,
+  adminAddMember,
+  moveMember,
+  adminReportAbsence,
+  adminSetTeamName,
   getAllJoins,
   getAllAbsences,
   rebuildGroupCounts

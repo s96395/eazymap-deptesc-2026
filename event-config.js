@@ -11,7 +11,10 @@ const EVENT = {
   time: "15:00–17:00",
   place: "逢甲草皮或綠美圖草皮（確定後另行通知）",
   people: "周老師、各處處長（代表）、福委會成員及空資處全體同仁",
-  replyDeadline: "11 月 30 日（一）",
+  replyDeadline: "11 月 25 日（三）",  // 報名截止日：選組與回報不能參加都在這天前完成
+  // 從這個時間起同仁不能再改，只有管理員能在後台調整。
+  // 改這裡時，firestore.rules 的 isOpen() 也要改成同一個時間。
+  lockAt: "2026-11-26T00:00:00+08:00",
   staffCount: 50   // 需要選組的同仁人數（不含主管、周老師、福委）
 };
 
@@ -52,4 +55,7 @@ const ADMIN_EMAILS = [
   "aaronhsu@gis.fcu.edu.tw"
 ];
 
-export { EVENT, GROUP_CAPACITY, GROUPS, AGENDA, BRING_ITEMS, PROVIDED_ITEMS, ABSENCE_REASONS, EMAIL_DOMAIN, ADMIN_EMAILS };
+/** 報名是否已截止（畫面用；真正擋住修改的是 firestore.rules） */
+const isLocked = () => Date.now() >= new Date(EVENT.lockAt).getTime();
+
+export { isLocked, EVENT, GROUP_CAPACITY, GROUPS, AGENDA, BRING_ITEMS, PROVIDED_ITEMS, ABSENCE_REASONS, EMAIL_DOMAIN, ADMIN_EMAILS };
