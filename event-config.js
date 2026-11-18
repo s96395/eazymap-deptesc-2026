@@ -48,6 +48,35 @@ const ABSENCE_REASONS = ["公假", "出差", "請假", "客戶會議或外部行
 // 隊長代報時只輸入帳號，系統自動補上這個網域
 const EMAIL_DOMAIN = "gis.fcu.edu.tw";
 
+// 可以報名的公司信箱網域。公司正在換信箱，部分同仁已改成 @easymap.tw。
+// 改這裡時，firestore.rules 的 companyEmail() 也要一起改。
+const ALLOWED_DOMAINS = ["gis.fcu.edu.tw", "easymap.tw"];
+
+/** 是否為可以報名的公司信箱 */
+const isCompanyEmail = (email) => {
+  const m = String(email || "").toLowerCase().match(/^[a-z0-9._-]+@(.+)$/);
+  return !!m && ALLOWED_DOMAINS.includes(m[1]);
+};
+
+/**
+ * 把輸入的帳號轉成信箱：只打 @ 前面就補上預設網域；
+ * 打完整信箱的話，網域要在 ALLOWED_DOMAINS 裡。格式不對回傳空字串。
+ */
+const toCompanyEmail = (raw) => {
+  const text = String(raw || "").trim().toLowerCase();
+  const email = text.includes("@") ? text : `${text}@${EMAIL_DOMAIN}`;
+  return isCompanyEmail(email) ? email : "";
+};
+
+/** 同一個人新舊信箱 @ 前面相同，用來避免重複報名 */
+const sameAccount = (a, b) => String(a || "").split("@")[0] === String(b || "").split("@")[0];
+
+/** 同一個帳號在另一個網域的信箱（firestore.rules 的 aliasOf() 邏輯相同） */
+const aliasOf = (email) => {
+  const [account, domain] = String(email || "").toLowerCase().split("@");
+  return `${account}@${domain === "easymap.tw" ? "gis.fcu.edu.tw" : "easymap.tw"}`;
+};
+
 const ADMIN_EMAILS = [
   "yoyoshen@gis.fcu.edu.tw",
   "irishuang@gis.fcu.edu.tw",
@@ -58,4 +87,4 @@ const ADMIN_EMAILS = [
 /** 報名是否已截止（畫面用；真正擋住修改的是 firestore.rules） */
 const isLocked = () => Date.now() >= new Date(EVENT.lockAt).getTime();
 
-export { isLocked, EVENT, GROUP_CAPACITY, GROUPS, AGENDA, BRING_ITEMS, PROVIDED_ITEMS, ABSENCE_REASONS, EMAIL_DOMAIN, ADMIN_EMAILS };
+export { isLocked, EVENT, GROUP_CAPACITY, GROUPS, AGENDA, BRING_ITEMS, PROVIDED_ITEMS, ABSENCE_REASONS, EMAIL_DOMAIN, ALLOWED_DOMAINS, isCompanyEmail, toCompanyEmail, sameAccount, aliasOf, ADMIN_EMAILS };

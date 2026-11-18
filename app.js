@@ -18,7 +18,7 @@ import {
   withdrawAbsence
 } from "./firebase-db.js";
 import {
-  isLocked, EVENT, GROUP_CAPACITY, GROUPS, AGENDA, BRING_ITEMS, PROVIDED_ITEMS, ABSENCE_REASONS, EMAIL_DOMAIN
+  isLocked, EVENT, GROUP_CAPACITY, GROUPS, AGENDA, BRING_ITEMS, PROVIDED_ITEMS, ABSENCE_REASONS, EMAIL_DOMAIN, ALLOWED_DOMAINS, isCompanyEmail, toCompanyEmail, sameAccount, aliasOf
 } from "./event-config.js";
 
 let currentUser = null;
@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
       logoutBtn.classList.remove("hidden");
       $("#section-login").classList.add("hidden");
       $("#section-main").classList.remove("hidden");
-      $("#domain-warning").classList.toggle("hidden", myEmail.endsWith(`@${EMAIL_DOMAIN}`));
+      $("#domain-warning").classList.toggle("hidden", isCompanyEmail(myEmail));
 
       unsubscribers.push(
         onGroupsChange((data) => { groupData = data; render(); }),
@@ -112,7 +112,7 @@ function renderEventInfo() {
   $("#event-place").textContent = EVENT.place;
   $$(".group-cap").forEach((el) => { el.textContent = GROUP_CAPACITY; });
   $$(".reply-deadline").forEach((el) => { el.textContent = EVENT.replyDeadline; });
-  $$(".email-domain").forEach((el) => { el.textContent = `@${EMAIL_DOMAIN}`; });
+  $$(".email-domain").forEach((el) => { el.textContent = ALLOWED_DOMAINS.map((d) => `@${d}`).join(" 或 "); });
 
   $("#agenda").innerHTML = AGENDA.map((a) => `
     <li><strong>${esc(a.title)}</strong>${a.note ? `<span>${esc(a.note)}</span>` : ""}</li>`).join("");
@@ -132,8 +132,11 @@ function namerOf(groupId) {
 }
 
 
+/** 新舊信箱（@ 前面相同）都算是本人 */
+const isMe = (email) => email === myEmail || email === aliasOf(myEmail);
+
 function myJoin() {
-  return joins.find((j) => j.email === myEmail) || null;
+  return joins.find((j) => isMe(j.email)) || null;
 }
 
 /** 被隊長代報的人，名單上原本只有帳號，本人登入後換成真實姓名 */
@@ -142,7 +145,7 @@ async function syncMyName() {
   if (nameSynced || !join || !currentUser?.displayName) return;
   nameSynced = true;
   if (join.displayName === currentUser.displayName) return;
-  try { await updateMyDisplayName(currentUser); } catch (err) { console.error(err); }
+  try { await updateMyDisplayName(currentUser, join.email); } catch (err) { console.error(err); }
 }
 
 function render() {
@@ -160,19 +163,19 @@ function renderStatus() {
   if (join) {
     const group = GROUPS.find((g) => g.id === join.groupId);
     const teamName = groupData[join.groupId]?.teamName;
-    const byOther = join.addedBy && join.addedBy !== myEmail;
+    const byOther = join.addedBy && !isMe(join.addedBy);
     el.className = "card status-card status-joined";
     el.innerHTML = `
       <div>
         <p class="status-label">我的狀態</p>
         <p class="status-main">已加入 <strong>${esc(group?.name || join.groupId)}</strong>${teamName ? `「${esc(teamName)}」` : ""}</p>
-        <p class="muted">${byOther ? `由 ${esc(join.addedByName || accountOf(join.addedBy))} 幫你報名。` : ""}當天記得帶筆、野餐墊和想吃的東西。</p>
+        <p class="muted">${byOther ? `由 ${esc(join.addedByName || accountOf(join.addedBy))} 幫你報名。` : ""}${join.email !== myEmail ? `名單上用的是你的另一個信箱 ${esc(join.email)}。` : ""}當天記得帶筆、野餐墊和想吃的東西。</p>
         ${locked ? lockNote : ""}
       </div>
       ${locked ? "" : `<div class="status-actions">
         <button id="btn-leave" class="btn-outline">退出這組</button>
       </div>`}`;
-    $("#btn-leave")?.addEventListener("click", () => handleRemove(myEmail, true));
+    $("#btn-leave")?.addEventListener("click", () => handleRemove(join.email, true));
     toggleAbsenceForm(false);
     return;
   }
@@ -191,7 +194,7 @@ function renderStatus() {
         <button id="btn-withdraw" class="btn-primary">改成可以參加</button>
       </div>`}`;
     $("#btn-edit-absence")?.addEventListener("click", () => toggleAbsenceForm(true));
-    $("#btn-withdraw")?.addEventListener("click", handleWithdraw);
+    $("#btn-withdraw")?.addEventListener("click", () => handleWithdraw(myAbsence.email));
     return;
   }
 
@@ -253,11 +256,11 @@ function renderGroups() {
 
     const memberItems = members.length
       ? members.map((m) => {
-          const isMe = m.email === myEmail;
-          const canRemove = !locked && isMine && !isMe && m.addedBy === myEmail;
+          const itsMe = isMe(m.email);
+          const canRemove = !locked && isMine && !itsMe && isMe(m.addedBy);
           return `
             <li>
-              <span>${esc(m.displayName || accountOf(m.email))}${isMe ? `<em class="me-tag">我</em>` : ""}</span>
+              <span>${esc(m.displayName || accountOf(m.email))}${itsMe ? `<em class="me-tag">我</em>` : ""}</span>
               ${canRemove ? `<button class="btn-text btn-remove" data-email="${esc(m.email)}">移除</button>` : ""}
             </li>`;
         }).join("")
@@ -275,7 +278,7 @@ function renderGroups() {
       <form class="inline-form add-member-form" data-group="${g.id}">
         <label for="add-${g.id}">幫隊友報名（還有 ${remaining} 個位子）</label>
         <input id="add-${g.id}" name="add-${g.id}" type="text" placeholder="輸入隊友帳號，例如 yoyoshen" autocomplete="off" autocapitalize="off" spellcheck="false" />
-        <p class="hint">只要打信箱 @ 前面，系統會自動補上 @${esc(EMAIL_DOMAIN)}</p>
+        <p class="hint">只要打信箱 @ 前面，系統會自動補上 @${esc(EMAIL_DOMAIN)}；已換成 @easymap.tw 的同仁請打完整信箱</p>
         <button type="submit" class="btn-primary">幫他報名</button>
       </form>`}` : "";
 
@@ -356,18 +359,18 @@ async function handleAddMember(e) {
   e.preventDefault();
   const form = e.currentTarget;
   const input = form.querySelector("input");
-  // 不小心貼上完整信箱也沒關係，只取 @ 前面
-  const account = accountOf(input.value.trim().toLowerCase());
-  if (!/^[a-z0-9._-]+$/.test(account)) {
-    showToast("帳號格式不對，只要輸入信箱 @ 前面的部分。", true);
+  const email = toCompanyEmail(input.value);
+  if (!email) {
+    showToast("帳號格式不對，請輸入信箱 @ 前面；已換成 @easymap.tw 的同仁請打完整信箱。", true);
     return;
   }
-  const email = `${account}@${EMAIL_DOMAIN}`;
-  if (email === myEmail) {
+  const account = accountOf(email);
+  if (sameAccount(email, myEmail)) {
     showToast("你已經在這組了。", true);
     return;
   }
-  const existing = joins.find((j) => j.email === email);
+  // 新舊信箱 @ 前面一樣，視為同一個人
+  const existing = joins.find((j) => sameAccount(j.email, email));
   if (existing) {
     const g = GROUPS.find((x) => x.id === existing.groupId);
     showToast(`${account} 已經在${g?.name || "其他組"}了。`, true);
@@ -415,8 +418,8 @@ async function handleAbsenceSubmit(e) {
   if (ok) toggleAbsenceForm(false);
 }
 
-async function handleWithdraw() {
-  await run(() => withdrawAbsence(myEmail), "已撤回，請記得選一組。", "撤回失敗，請稍後再試。");
+async function handleWithdraw(email) {
+  await run(() => withdrawAbsence(email), "已撤回，請記得選一組。", "撤回失敗，請稍後再試。");
 }
 
 function showToast(msg, isError = false) {

@@ -12,7 +12,8 @@ service cloud.firestore {
     }
 
     function companyEmail(email) {
-      return email is string && email.matches('^[a-z0-9._-]+@gis[.]fcu[.]edu[.]tw$');
+      // 公司正在換信箱，@gis.fcu.edu.tw 和 @easymap.tw 都可以報名
+      return email is string && email.matches('^[a-z0-9._-]+@(gis[.]fcu[.]edu[.]tw|easymap[.]tw)$');
     }
 
     function validReason(reasonType) {
@@ -35,12 +36,20 @@ service cloud.firestore {
       ];
     }
 
+    // 同一個帳號在另一個網域的信箱；新舊信箱 @ 前面相同視為同一個人
+    function aliasOf(email) {
+      let account = email.split('@')[0];
+      return email.matches('^.*@easymap[.]tw$') ? account + '@gis.fcu.edu.tw' : account + '@easymap.tw';
+    }
+    function isMe(email) { return email == myEmail() || email == aliasOf(myEmail()); }
+
     function joinPath(email) { return /databases/$(database)/documents/picnicJoins/$(email); }
     function absencePath(email) { return /databases/$(database)/documents/picnicAbsences/$(email); }
     function groupPath(groupId) { return /databases/$(database)/documents/picnicGroups/$(groupId); }
 
     function isMemberOf(groupId) {
-      return exists(joinPath(myEmail())) && get(joinPath(myEmail())).data.groupId == groupId;
+      return (exists(joinPath(myEmail())) && get(joinPath(myEmail())).data.groupId == groupId) ||
+        (exists(joinPath(aliasOf(myEmail()))) && get(joinPath(aliasOf(myEmail()))).data.groupId == groupId);
     }
 
     // ---- 各組人數與隊名 ----
@@ -113,17 +122,23 @@ service cloud.firestore {
         request.resource.data.addedBy == myEmail() &&
         request.resource.data.addedByName is string &&
         validGroup(request.resource.data.groupId) &&
-        ((isAdmin() && !existsAfter(absencePath(email))) ||
+        // 同一個人只能有一筆：另一個網域的信箱不能已經選組或回報不能參加
+        ((isAdmin() &&
+            !existsAfter(absencePath(email)) &&
+            !existsAfter(absencePath(aliasOf(email))) &&
+            !existsAfter(joinPath(aliasOf(email)))) ||
           (isOpen() &&
             (email == myEmail() || isMemberOf(request.resource.data.groupId)) &&
-            !exists(absencePath(email)))) &&
+            !exists(absencePath(email)) &&
+            !exists(absencePath(aliasOf(email))) &&
+            !exists(joinPath(aliasOf(email))))) &&
         // 每次只能加一個人：組別的 lastChange 必須是這筆資料本身
         getAfter(groupPath(request.resource.data.groupId)).data.lastChange == email &&
         getAfter(groupPath(request.resource.data.groupId)).data.count ==
           get(groupPath(request.resource.data.groupId)).data.count + 1;
 
       // 被代報的人第一次登入時，把名單上的帳號換成本人的名字
-      allow update: if isSignedIn() && email == myEmail() &&
+      allow update: if isSignedIn() && isMe(email) &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']) &&
         request.resource.data.displayName is string &&
         request.resource.data.displayName.size() > 0 &&
@@ -138,7 +153,7 @@ service cloud.firestore {
       allow delete: if isSignedIn() && (
         isAdmin() ||
         (isOpen() &&
-          (email == myEmail() || resource.data.addedBy == myEmail()) &&
+          (isMe(email) || isMe(resource.data.addedBy)) &&
           getAfter(groupPath(resource.data.groupId)).data.lastChange == email &&
           getAfter(groupPath(resource.data.groupId)).data.count ==
             get(groupPath(resource.data.groupId)).data.count - 1)
@@ -148,7 +163,7 @@ service cloud.firestore {
     // ---- 不能參加的回報（只有本人與管理員看得到） ----
 
     match /picnicAbsences/{email} {
-      allow read: if isSignedIn() && (email == myEmail() || isAdmin());
+      allow read: if isSignedIn() && (isMe(email) || isAdmin());
       // 本人在截止前回報；管理員隨時可以幫人登記（會在同一個 transaction 裡把他移出組別）
       allow create, update: if isSignedIn() &&
         companyEmail(email) &&
@@ -158,9 +173,15 @@ service cloud.firestore {
         validReason(request.resource.data.reasonType) &&
         request.resource.data.reasonNote is string &&
         request.resource.data.reasonNote.size() <= 200 &&
-        ((isAdmin() && !existsAfter(joinPath(email))) ||
-          (isOpen() && email == myEmail() && !exists(joinPath(email))));
-      allow delete: if isSignedIn() && (isAdmin() || (isOpen() && email == myEmail()));
+        ((isAdmin() &&
+            !existsAfter(joinPath(email)) &&
+            !existsAfter(joinPath(aliasOf(email))) &&
+            !existsAfter(absencePath(aliasOf(email)))) ||
+          (isOpen() && isMe(email) &&
+            !exists(joinPath(email)) &&
+            !exists(joinPath(aliasOf(email))) &&
+            !exists(absencePath(aliasOf(email)))));
+      allow delete: if isSignedIn() && (isAdmin() || (isOpen() && isMe(email)));
     }
   }
 }

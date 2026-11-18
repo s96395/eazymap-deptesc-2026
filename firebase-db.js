@@ -33,6 +33,7 @@ import {
   writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
+import { aliasOf } from "./event-config.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -72,11 +73,15 @@ function onJoinsChange(callback) {
   });
 }
 
-/** 本人的不能參加回報 */
+/** 本人的不能參加回報（新舊信箱都算本人） */
 function onMyAbsenceChange(email, callback) {
-  return onSnapshot(doc(db, ABSENCES_COL, normEmail(email)), (snap) => {
-    callback(snap.exists() ? snap.data() : null);
-  });
+  const found = {};
+  const listen = (e) => onSnapshot(doc(db, ABSENCES_COL, e), (snap) => {
+    found[e] = snap.exists() ? snap.data() : null;
+    callback(Object.values(found).find(Boolean) || null);
+  }, () => { found[e] = null; });
+  const stops = [listen(normEmail(email)), listen(aliasOf(normEmail(email)))];
+  return () => stops.forEach((fn) => fn());
 }
 
 /** 全部不能參加回報（管理員） */
@@ -100,18 +105,22 @@ async function addMember(actor, member, groupId, capacity) {
   const isSelf = actorEmail === memberEmail;
 
   const joinRef = doc(db, JOINS_COL, memberEmail);
-  const absenceRef = doc(db, ABSENCES_COL, memberEmail);
+  const aliasJoinRef = doc(db, JOINS_COL, aliasOf(memberEmail));
   const groupRef = doc(db, GROUPS_COL, groupId);
 
   await runTransaction(db, async (tx) => {
-    const [joinSnap, groupSnap] = await Promise.all([tx.get(joinRef), tx.get(groupRef)]);
-    if (joinSnap.exists()) throw new Error(isSelf ? "ALREADY_JOINED" : "MEMBER_TAKEN");
+    const [joinSnap, aliasJoinSnap, groupSnap] = await Promise.all([tx.get(joinRef), tx.get(aliasJoinRef), tx.get(groupRef)]);
+    // 新舊信箱 @ 前面一樣視為同一個人
+    if (joinSnap.exists() || aliasJoinSnap.exists()) throw new Error(isSelf ? "ALREADY_JOINED" : "MEMBER_TAKEN");
     if (!groupSnap.exists()) throw new Error("NOT_READY");
 
     // 不能參加的回報只有本人與管理員看得到，代報時讀不到，交給安全規則擋
     if (isSelf) {
-      const absenceSnap = await tx.get(absenceRef);
-      if (absenceSnap.exists()) throw new Error("MARKED_ABSENT");
+      const absences = await Promise.all([
+        tx.get(doc(db, ABSENCES_COL, memberEmail)),
+        tx.get(doc(db, ABSENCES_COL, aliasOf(memberEmail)))
+      ]);
+      if (absences.some((a) => a.exists())) throw new Error("MARKED_ABSENT");
     }
 
     const count = Number(groupSnap.data().count) || 0;
@@ -153,9 +162,9 @@ async function removeMember(email) {
 }
 
 /** 被代報的人登入後，把名單上的帳號換成本人的名字 */
-async function updateMyDisplayName(user) {
+async function updateMyDisplayName(user, joinEmail) {
   if (!user.displayName) return;
-  await updateDoc(doc(db, JOINS_COL, normEmail(user.email)), { displayName: user.displayName });
+  await updateDoc(doc(db, JOINS_COL, normEmail(joinEmail || user.email)), { displayName: user.displayName });
 }
 
 /** 組員修改自己組的隊名 */
@@ -170,13 +179,22 @@ async function setTeamName(user, groupId, teamName) {
 
 /** 回報不能參加（已在組裡的人要先退出） */
 async function reportAbsence(user, reasonType, reasonNote) {
-  const email = normEmail(user.email);
-  const joinRef = doc(db, JOINS_COL, email);
-  const absenceRef = doc(db, ABSENCES_COL, email);
+  const myEmail = normEmail(user.email);
+  const alias = aliasOf(myEmail);
 
   await runTransaction(db, async (tx) => {
-    const [joinSnap, absenceSnap] = await Promise.all([tx.get(joinRef), tx.get(absenceRef)]);
-    if (joinSnap.exists()) throw new Error("ALREADY_JOINED");
+    const [joinSnap, aliasJoinSnap, mineSnap, aliasSnap] = await Promise.all([
+      tx.get(doc(db, JOINS_COL, myEmail)),
+      tx.get(doc(db, JOINS_COL, alias)),
+      tx.get(doc(db, ABSENCES_COL, myEmail)),
+      tx.get(doc(db, ABSENCES_COL, alias))
+    ]);
+    if (joinSnap.exists() || aliasJoinSnap.exists()) throw new Error("ALREADY_JOINED");
+
+    // 舊信箱已經回報過的話，就改那一筆，不要多一筆
+    const email = !mineSnap.exists() && aliasSnap.exists() ? alias : myEmail;
+    const absenceRef = doc(db, ABSENCES_COL, email);
+    const absenceSnap = email === myEmail ? mineSnap : aliasSnap;
 
     tx.set(absenceRef, {
       email,
@@ -203,14 +221,20 @@ async function adminAddMember(admin, email, groupId, capacity) {
   const absenceRef = doc(db, ABSENCES_COL, memberEmail);
   const groupRef = doc(db, GROUPS_COL, groupId);
 
+  const aliasJoinRef = doc(db, JOINS_COL, aliasOf(memberEmail));
+  const aliasAbsenceRef = doc(db, ABSENCES_COL, aliasOf(memberEmail));
+
   await runTransaction(db, async (tx) => {
-    const [joinSnap, absenceSnap, groupSnap] = await Promise.all([tx.get(joinRef), tx.get(absenceRef), tx.get(groupRef)]);
-    if (joinSnap.exists()) throw new Error("MEMBER_TAKEN");
+    const [joinSnap, absenceSnap, groupSnap, aliasJoinSnap, aliasAbsenceSnap] = await Promise.all([
+      tx.get(joinRef), tx.get(absenceRef), tx.get(groupRef), tx.get(aliasJoinRef), tx.get(aliasAbsenceRef)
+    ]);
+    if (joinSnap.exists() || aliasJoinSnap.exists()) throw new Error("MEMBER_TAKEN");
     if (!groupSnap.exists()) throw new Error("NOT_READY");
     const count = Number(groupSnap.data().count) || 0;
     if (count + 1 > capacity) throw new Error("FULL");
 
     if (absenceSnap.exists()) tx.delete(absenceRef);
+    if (aliasAbsenceSnap.exists()) tx.delete(aliasAbsenceRef);
     tx.update(groupRef, { count: count + 1, lastChange: memberEmail });
     tx.set(joinRef, {
       email: memberEmail,
@@ -253,21 +277,32 @@ async function moveMember(email, toGroupId, capacity) {
 /** 管理員幫某人登記不能參加；他如果在組裡會一起移出 */
 async function adminReportAbsence(email, reasonType, reasonNote) {
   const memberEmail = normEmail(email);
-  const joinRef = doc(db, JOINS_COL, memberEmail);
   const absenceRef = doc(db, ABSENCES_COL, memberEmail);
+  const aliasAbsenceRef = doc(db, ABSENCES_COL, aliasOf(memberEmail));
 
   await runTransaction(db, async (tx) => {
-    const [joinSnap, absenceSnap] = await Promise.all([tx.get(joinRef), tx.get(absenceRef)]);
-    let displayName = absenceSnap.exists() ? absenceSnap.data().displayName || "" : "";
+    const [mainJoin, aliasJoin, absenceSnap, aliasAbsenceSnap] = await Promise.all([
+      tx.get(doc(db, JOINS_COL, memberEmail)),
+      tx.get(doc(db, JOINS_COL, aliasOf(memberEmail))),
+      tx.get(absenceRef),
+      tx.get(aliasAbsenceRef)
+    ]);
+    // 新舊信箱只留一筆回報
+    const oldAbsence = absenceSnap.exists() ? absenceSnap : aliasAbsenceSnap.exists() ? aliasAbsenceSnap : null;
+    if (aliasAbsenceSnap.exists()) tx.delete(aliasAbsenceRef);
+    let displayName = oldAbsence ? oldAbsence.data().displayName || "" : "";
 
+    // 新舊信箱只要有一個在組裡，就移出
+    const joinSnap = mainJoin.exists() ? mainJoin : aliasJoin;
+    const joinRef = joinSnap.ref;
     if (joinSnap.exists()) {
       displayName = displayName || joinSnap.data().displayName || "";
       const groupRef = doc(db, GROUPS_COL, joinSnap.data().groupId);
       const groupSnap = await tx.get(groupRef);
       const nextCount = Math.max(0, (groupSnap.exists() ? Number(groupSnap.data().count) || 0 : 1) - 1);
       tx.update(groupRef, nextCount === 0
-        ? { count: 0, lastChange: memberEmail, teamName: "", teamNameBy: "" }
-        : { count: nextCount, lastChange: memberEmail });
+        ? { count: 0, lastChange: joinSnap.id, teamName: "", teamNameBy: "" }
+        : { count: nextCount, lastChange: joinSnap.id });
       tx.delete(joinRef);
     }
 
@@ -276,7 +311,7 @@ async function adminReportAbsence(email, reasonType, reasonNote) {
       displayName: displayName || memberEmail.split("@")[0],
       reasonType,
       reasonNote,
-      createdAt: absenceSnap.exists() ? absenceSnap.data().createdAt : serverTimestamp(),
+      createdAt: oldAbsence ? oldAbsence.data().createdAt : serverTimestamp(),
       updatedAt: serverTimestamp()
     });
   });
