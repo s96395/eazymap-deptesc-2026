@@ -182,7 +182,7 @@ function renderStatus() {
     <div>
       <p class="status-label">我的狀態</p>
       <p class="status-main">還沒選組</p>
-      <p class="muted">請從下方挑一組加入。當天不能來的話，請在 ${esc(EVENT.replyDeadline)}前回報。</p>
+      <p class="muted">請在 ${esc(EVENT.replyDeadline)}前從下方挑一組加入；當天不能來的話，也請在這天前回報。</p>
     </div>
     <div class="status-actions">
       <button id="btn-go-groups" class="btn-primary btn-go">去選組</button>
