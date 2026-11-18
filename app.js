@@ -18,7 +18,7 @@ import {
   withdrawAbsence
 } from "./firebase-db.js";
 import {
-  isLocked, EVENT, GROUP_CAPACITY, GROUPS, AGENDA, BRING_ITEMS, PROVIDED_ITEMS, ABSENCE_REASONS, EMAIL_DOMAIN, ALLOWED_DOMAINS, isCompanyEmail, toCompanyEmail, sameAccount
+  isLocked, EVENT, GROUP_CAPACITY, GROUPS, AGENDA, BRING_ITEMS, PROVIDED_ITEMS, ABSENCE_REASONS, EMAIL_DOMAIN, ALLOWED_DOMAINS, isCompanyEmail, toCompanyEmail, sameAccount, aliasOf
 } from "./event-config.js";
 
 let currentUser = null;
@@ -132,13 +132,11 @@ function namerOf(groupId) {
 }
 
 
-function myJoin() {
-  return joins.find((j) => j.email === myEmail) || null;
-}
+/** 新舊信箱（@ 前面相同）都算是本人 */
+const isMe = (email) => email === myEmail || email === aliasOf(myEmail);
 
-/** 用另一個網域的信箱報過名（例如舊的 @gis.fcu.edu.tw） */
-function myOtherJoin() {
-  return joins.find((j) => j.email !== myEmail && sameAccount(j.email, myEmail)) || null;
+function myJoin() {
+  return joins.find((j) => isMe(j.email)) || null;
 }
 
 /** 被隊長代報的人，名單上原本只有帳號，本人登入後換成真實姓名 */
@@ -147,7 +145,7 @@ async function syncMyName() {
   if (nameSynced || !join || !currentUser?.displayName) return;
   nameSynced = true;
   if (join.displayName === currentUser.displayName) return;
-  try { await updateMyDisplayName(currentUser); } catch (err) { console.error(err); }
+  try { await updateMyDisplayName(currentUser, join.email); } catch (err) { console.error(err); }
 }
 
 function render() {
@@ -165,19 +163,19 @@ function renderStatus() {
   if (join) {
     const group = GROUPS.find((g) => g.id === join.groupId);
     const teamName = groupData[join.groupId]?.teamName;
-    const byOther = join.addedBy && join.addedBy !== myEmail;
+    const byOther = join.addedBy && !isMe(join.addedBy);
     el.className = "card status-card status-joined";
     el.innerHTML = `
       <div>
         <p class="status-label">我的狀態</p>
         <p class="status-main">已加入 <strong>${esc(group?.name || join.groupId)}</strong>${teamName ? `「${esc(teamName)}」` : ""}</p>
-        <p class="muted">${byOther ? `由 ${esc(join.addedByName || accountOf(join.addedBy))} 幫你報名。` : ""}當天記得帶筆、野餐墊和想吃的東西。</p>
+        <p class="muted">${byOther ? `由 ${esc(join.addedByName || accountOf(join.addedBy))} 幫你報名。` : ""}${join.email !== myEmail ? `名單上用的是你的另一個信箱 ${esc(join.email)}。` : ""}當天記得帶筆、野餐墊和想吃的東西。</p>
         ${locked ? lockNote : ""}
       </div>
       ${locked ? "" : `<div class="status-actions">
         <button id="btn-leave" class="btn-outline">退出這組</button>
       </div>`}`;
-    $("#btn-leave")?.addEventListener("click", () => handleRemove(myEmail, true));
+    $("#btn-leave")?.addEventListener("click", () => handleRemove(join.email, true));
     toggleAbsenceForm(false);
     return;
   }
@@ -196,7 +194,7 @@ function renderStatus() {
         <button id="btn-withdraw" class="btn-primary">改成可以參加</button>
       </div>`}`;
     $("#btn-edit-absence")?.addEventListener("click", () => toggleAbsenceForm(true));
-    $("#btn-withdraw")?.addEventListener("click", handleWithdraw);
+    $("#btn-withdraw")?.addEventListener("click", () => handleWithdraw(myAbsence.email));
     return;
   }
 
@@ -258,11 +256,11 @@ function renderGroups() {
 
     const memberItems = members.length
       ? members.map((m) => {
-          const isMe = m.email === myEmail;
-          const canRemove = !locked && isMine && !isMe && m.addedBy === myEmail;
+          const itsMe = isMe(m.email);
+          const canRemove = !locked && isMine && !itsMe && isMe(m.addedBy);
           return `
             <li>
-              <span>${esc(m.displayName || accountOf(m.email))}${isMe ? `<em class="me-tag">我</em>` : ""}</span>
+              <span>${esc(m.displayName || accountOf(m.email))}${itsMe ? `<em class="me-tag">我</em>` : ""}</span>
               ${canRemove ? `<button class="btn-text btn-remove" data-email="${esc(m.email)}">移除</button>` : ""}
             </li>`;
         }).join("")
@@ -349,12 +347,6 @@ async function run(task, okMsg, failMsg) {
 }
 
 async function handleJoin(groupId, btn) {
-  const other = myOtherJoin();
-  if (other) {
-    const g = GROUPS.find((x) => x.id === other.groupId);
-    showToast(`你的另一個信箱 ${other.email} 已經在${g?.name || "其他組"}了，不用再報一次。要換組請聯絡福委會。`, true);
-    return;
-  }
   btn.disabled = true;
   btn.textContent = "處理中…";
   const groupName = GROUPS.find((g) => g.id === groupId)?.name || "";
@@ -426,8 +418,8 @@ async function handleAbsenceSubmit(e) {
   if (ok) toggleAbsenceForm(false);
 }
 
-async function handleWithdraw() {
-  await run(() => withdrawAbsence(myEmail), "已撤回，請記得選一組。", "撤回失敗，請稍後再試。");
+async function handleWithdraw(email) {
+  await run(() => withdrawAbsence(email), "已撤回，請記得選一組。", "撤回失敗，請稍後再試。");
 }
 
 function showToast(msg, isError = false) {

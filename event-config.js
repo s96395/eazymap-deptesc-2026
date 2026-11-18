@@ -71,6 +71,12 @@ const toCompanyEmail = (raw) => {
 /** 同一個人新舊信箱 @ 前面相同，用來避免重複報名 */
 const sameAccount = (a, b) => String(a || "").split("@")[0] === String(b || "").split("@")[0];
 
+/** 同一個帳號在另一個網域的信箱（firestore.rules 的 aliasOf() 邏輯相同） */
+const aliasOf = (email) => {
+  const [account, domain] = String(email || "").toLowerCase().split("@");
+  return `${account}@${domain === "easymap.tw" ? "gis.fcu.edu.tw" : "easymap.tw"}`;
+};
+
 const ADMIN_EMAILS = [
   "yoyoshen@gis.fcu.edu.tw",
   "irishuang@gis.fcu.edu.tw",
@@ -81,4 +87,4 @@ const ADMIN_EMAILS = [
 /** 報名是否已截止（畫面用；真正擋住修改的是 firestore.rules） */
 const isLocked = () => Date.now() >= new Date(EVENT.lockAt).getTime();
 
-export { isLocked, EVENT, GROUP_CAPACITY, GROUPS, AGENDA, BRING_ITEMS, PROVIDED_ITEMS, ABSENCE_REASONS, EMAIL_DOMAIN, ALLOWED_DOMAINS, isCompanyEmail, toCompanyEmail, sameAccount, ADMIN_EMAILS };
+export { isLocked, EVENT, GROUP_CAPACITY, GROUPS, AGENDA, BRING_ITEMS, PROVIDED_ITEMS, ABSENCE_REASONS, EMAIL_DOMAIN, ALLOWED_DOMAINS, isCompanyEmail, toCompanyEmail, sameAccount, aliasOf, ADMIN_EMAILS };

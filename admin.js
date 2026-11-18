@@ -231,7 +231,7 @@ function renderGroups() {
       showToast(`${accountOf(email)} 已經在${gName}了，請用「換到」調整。`, true);
       return;
     }
-    if (absences.some((a) => a.email === email) &&
+    if (absences.some((a) => sameAccount(a.email, email)) &&
       !confirm(`${accountOf(email)} 回報過不能參加，加入後會刪掉這筆回報，確定嗎？`)) return;
     const ok = await run(() => adminAddMember(currentUser, email, form.dataset.group, GROUP_CAPACITY), `已把 ${accountOf(email)} 加進來。`);
     // 名單更新時卡片會重畫，要找新的輸入框來清空
@@ -272,7 +272,7 @@ async function handleAdminAbsence(e) {
   if (!email) { showToast(BAD_ACCOUNT, true); return; }
   const reasonType = $("#aa-type").value;
   const reasonNote = $("#aa-note").value.trim().slice(0, 200);
-  const join = joins.find((j) => j.email === email);
+  const join = joins.find((j) => sameAccount(j.email, email));
   if (join) {
     const gName = GROUPS.find((x) => x.id === join.groupId)?.name || "";
     if (!confirm(`${accountOf(email)} 目前在${gName}，登記後會移出組別，確定嗎？`)) return;
