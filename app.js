@@ -18,7 +18,7 @@ import {
   withdrawAbsence
 } from "./firebase-db.js";
 import {
-  isLocked, EVENT, GROUP_CAPACITY, GROUPS, AGENDA, BRING_ITEMS, PROVIDED_ITEMS, ABSENCE_REASONS, EMAIL_DOMAIN
+  isLocked, EVENT, GROUP_CAPACITY, GROUPS, AGENDA, BRING_ITEMS, PROVIDED_ITEMS, ABSENCE_REASONS, EMAIL_DOMAIN, ALLOWED_DOMAINS, isCompanyEmail, toCompanyEmail, sameAccount
 } from "./event-config.js";
 
 let currentUser = null;
@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
       logoutBtn.classList.remove("hidden");
       $("#section-login").classList.add("hidden");
       $("#section-main").classList.remove("hidden");
-      $("#domain-warning").classList.toggle("hidden", myEmail.endsWith(`@${EMAIL_DOMAIN}`));
+      $("#domain-warning").classList.toggle("hidden", isCompanyEmail(myEmail));
 
       unsubscribers.push(
         onGroupsChange((data) => { groupData = data; render(); }),
@@ -112,7 +112,7 @@ function renderEventInfo() {
   $("#event-place").textContent = EVENT.place;
   $$(".group-cap").forEach((el) => { el.textContent = GROUP_CAPACITY; });
   $$(".reply-deadline").forEach((el) => { el.textContent = EVENT.replyDeadline; });
-  $$(".email-domain").forEach((el) => { el.textContent = `@${EMAIL_DOMAIN}`; });
+  $$(".email-domain").forEach((el) => { el.textContent = ALLOWED_DOMAINS.map((d) => `@${d}`).join(" 或 "); });
 
   $("#agenda").innerHTML = AGENDA.map((a) => `
     <li><strong>${esc(a.title)}</strong>${a.note ? `<span>${esc(a.note)}</span>` : ""}</li>`).join("");
@@ -134,6 +134,11 @@ function namerOf(groupId) {
 
 function myJoin() {
   return joins.find((j) => j.email === myEmail) || null;
+}
+
+/** 用另一個網域的信箱報過名（例如舊的 @gis.fcu.edu.tw） */
+function myOtherJoin() {
+  return joins.find((j) => j.email !== myEmail && sameAccount(j.email, myEmail)) || null;
 }
 
 /** 被隊長代報的人，名單上原本只有帳號，本人登入後換成真實姓名 */
@@ -275,7 +280,7 @@ function renderGroups() {
       <form class="inline-form add-member-form" data-group="${g.id}">
         <label for="add-${g.id}">幫隊友報名（還有 ${remaining} 個位子）</label>
         <input id="add-${g.id}" name="add-${g.id}" type="text" placeholder="輸入隊友帳號，例如 yoyoshen" autocomplete="off" autocapitalize="off" spellcheck="false" />
-        <p class="hint">只要打信箱 @ 前面，系統會自動補上 @${esc(EMAIL_DOMAIN)}</p>
+        <p class="hint">只要打信箱 @ 前面，系統會自動補上 @${esc(EMAIL_DOMAIN)}；已換成 @easymap.tw 的同仁請打完整信箱</p>
         <button type="submit" class="btn-primary">幫他報名</button>
       </form>`}` : "";
 
@@ -344,6 +349,12 @@ async function run(task, okMsg, failMsg) {
 }
 
 async function handleJoin(groupId, btn) {
+  const other = myOtherJoin();
+  if (other) {
+    const g = GROUPS.find((x) => x.id === other.groupId);
+    showToast(`你的另一個信箱 ${other.email} 已經在${g?.name || "其他組"}了，不用再報一次。要換組請聯絡福委會。`, true);
+    return;
+  }
   btn.disabled = true;
   btn.textContent = "處理中…";
   const groupName = GROUPS.find((g) => g.id === groupId)?.name || "";
@@ -356,18 +367,18 @@ async function handleAddMember(e) {
   e.preventDefault();
   const form = e.currentTarget;
   const input = form.querySelector("input");
-  // 不小心貼上完整信箱也沒關係，只取 @ 前面
-  const account = accountOf(input.value.trim().toLowerCase());
-  if (!/^[a-z0-9._-]+$/.test(account)) {
-    showToast("帳號格式不對，只要輸入信箱 @ 前面的部分。", true);
+  const email = toCompanyEmail(input.value);
+  if (!email) {
+    showToast("帳號格式不對，請輸入信箱 @ 前面；已換成 @easymap.tw 的同仁請打完整信箱。", true);
     return;
   }
-  const email = `${account}@${EMAIL_DOMAIN}`;
-  if (email === myEmail) {
+  const account = accountOf(email);
+  if (sameAccount(email, myEmail)) {
     showToast("你已經在這組了。", true);
     return;
   }
-  const existing = joins.find((j) => j.email === email);
+  // 新舊信箱 @ 前面一樣，視為同一個人
+  const existing = joins.find((j) => sameAccount(j.email, email));
   if (existing) {
     const g = GROUPS.find((x) => x.id === existing.groupId);
     showToast(`${account} 已經在${g?.name || "其他組"}了。`, true);

@@ -18,7 +18,7 @@ import {
   adminSetTeamName,
   rebuildGroupCounts
 } from "./firebase-db.js";
-import { isLocked, EVENT, GROUP_CAPACITY, GROUPS, ADMIN_EMAILS, ABSENCE_REASONS, EMAIL_DOMAIN } from "./event-config.js";
+import { isLocked, EVENT, GROUP_CAPACITY, GROUPS, ADMIN_EMAILS, ABSENCE_REASONS, toCompanyEmail, sameAccount } from "./event-config.js";
 
 let groupData = {};
 let joins = [];
@@ -117,10 +117,8 @@ async function run(task, okMsg) {
 }
 
 /** 輸入的帳號轉成公司信箱；格式不對回傳空字串 */
-function toEmail(raw) {
-  const account = accountOf(String(raw || "").trim().toLowerCase());
-  return /^[a-z0-9._-]+$/.test(account) ? `${account}@${EMAIL_DOMAIN}` : "";
-}
+const toEmail = toCompanyEmail;
+const BAD_ACCOUNT = "帳號格式不對，請輸入信箱 @ 前面；@easymap.tw 的同仁請打完整信箱。";
 
 function switchTab(tab) {
   $$(".tab-btn").forEach((btn) => btn.classList.toggle("tab-active", btn.dataset.tab === tab));
@@ -197,7 +195,7 @@ function renderGroups() {
         <form class="inline-form admin-add-form" data-group="${g.id}">
           <label for="aj-${g.id}">加人（輸入信箱 @ 前面）</label>
           <div class="inline-row">
-            <input id="aj-${g.id}" name="aj-${g.id}" type="text" placeholder="例如 yoyoshen" autocomplete="off" autocapitalize="off" spellcheck="false" />
+            <input id="aj-${g.id}" name="aj-${g.id}" type="text" placeholder="例如 yoyoshen 或完整信箱" autocomplete="off" autocapitalize="off" spellcheck="false" />
             <button type="submit" class="btn-primary">加入</button>
           </div>
         </form>` : `<p class="muted small">這組已經滿了。</p>`}
@@ -225,8 +223,9 @@ function renderGroups() {
     e.preventDefault();
     const input = form.querySelector("input");
     const email = toEmail(input.value);
-    if (!email) { showToast("帳號格式不對，只要輸入信箱 @ 前面的部分。", true); return; }
-    const existing = joins.find((j) => j.email === email);
+    if (!email) { showToast(BAD_ACCOUNT, true); return; }
+    // 新舊信箱 @ 前面一樣，視為同一個人
+    const existing = joins.find((j) => sameAccount(j.email, email));
     if (existing) {
       const gName = GROUPS.find((x) => x.id === existing.groupId)?.name || "其他組";
       showToast(`${accountOf(email)} 已經在${gName}了，請用「換到」調整。`, true);
@@ -270,7 +269,7 @@ function renderAbsences() {
 async function handleAdminAbsence(e) {
   e.preventDefault();
   const email = toEmail($("#aa-account").value);
-  if (!email) { showToast("帳號格式不對，只要輸入信箱 @ 前面的部分。", true); return; }
+  if (!email) { showToast(BAD_ACCOUNT, true); return; }
   const reasonType = $("#aa-type").value;
   const reasonNote = $("#aa-note").value.trim().slice(0, 200);
   const join = joins.find((j) => j.email === email);

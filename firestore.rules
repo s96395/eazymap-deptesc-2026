@@ -12,7 +12,8 @@ service cloud.firestore {
     }
 
     function companyEmail(email) {
-      return email is string && email.matches('^[a-z0-9._-]+@gis[.]fcu[.]edu[.]tw$');
+      // 公司正在換信箱，@gis.fcu.edu.tw 和 @easymap.tw 都可以報名
+      return email is string && email.matches('^[a-z0-9._-]+@(gis[.]fcu[.]edu[.]tw|easymap[.]tw)$');
     }
 
     function validReason(reasonType) {
