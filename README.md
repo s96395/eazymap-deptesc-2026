@@ -61,7 +61,7 @@ style.css           樣式
 
 - 活動名稱、日期、地點、流程、注意事項、回報截止日：`event-config.js`
 - 鎖定時間：`event-config.js` 的 `lockAt` **和** `firestore.rules` 的 `isOpen()`（毫秒時間戳）都要改
-- 組數、每組人數、公司信箱網域（目前 @gis.fcu.edu.tw 和 @easymap.tw 都可以）、不能參加的原因選項：`event-config.js` **和** `firestore.rules` 都要改
+- 組數、每組人數、公司信箱網域（目前 @gis.fcu.edu.tw 和 @easymap.tw 都可以）、個別開放的帳號（`EXTRA_EMAILS`，目前有 cspsgordon@gmail.com）、不能參加的原因選項：`event-config.js` **和** `firestore.rules` 都要改
 - 管理員名單：`event-config.js` 的 `ADMIN_EMAILS` 和 `firestore.rules` 的 `isAdmin()`
 
 ## 管理員帳號
