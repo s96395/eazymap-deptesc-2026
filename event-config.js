@@ -52,10 +52,15 @@ const EMAIL_DOMAIN = "gis.fcu.edu.tw";
 // 改這裡時，firestore.rules 的 companyEmail() 也要一起改。
 const ALLOWED_DOMAINS = ["gis.fcu.edu.tw", "easymap.tw"];
 
-/** 是否為可以報名的公司信箱 */
+// 不是公司信箱、但個別開放報名的帳號（要打完整信箱）。
+// 改這裡時，firestore.rules 的 companyEmail() 也要一起改。
+const EXTRA_EMAILS = ["cspsgordon@gmail.com"];
+
+/** 是否為可以報名的信箱（公司網域或個別開放的帳號） */
 const isCompanyEmail = (email) => {
-  const m = String(email || "").toLowerCase().match(/^[a-z0-9._-]+@(.+)$/);
-  return !!m && ALLOWED_DOMAINS.includes(m[1]);
+  const e = String(email || "").toLowerCase();
+  const m = e.match(/^[a-z0-9._-]+@(.+)$/);
+  return !!m && (ALLOWED_DOMAINS.includes(m[1]) || EXTRA_EMAILS.includes(e));
 };
 
 /**

@@ -12,8 +12,12 @@ service cloud.firestore {
     }
 
     function companyEmail(email) {
-      // 公司正在換信箱，@gis.fcu.edu.tw 和 @easymap.tw 都可以報名
-      return email is string && email.matches('^[a-z0-9._-]+@(gis[.]fcu[.]edu[.]tw|easymap[.]tw)$');
+      // 公司正在換信箱，@gis.fcu.edu.tw 和 @easymap.tw 都可以報名；
+      // 另外個別開放的帳號列在後面（要和 event-config.js 的 EXTRA_EMAILS 一致）
+      return email is string && (
+        email.matches('^[a-z0-9._-]+@(gis[.]fcu[.]edu[.]tw|easymap[.]tw)$') ||
+        email in ['cspsgordon@gmail.com']
+      );
     }
 
     function validReason(reasonType) {
